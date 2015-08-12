@@ -1,24 +1,3 @@
-/*++
-
-Copyright (c) Microsoft Corporation.  All rights reserved.
-
-Module Name: 
-
-    internal.h
-
-Abstract:
-
-    This module contains the common internal type and function
-    definitions for the SPB peripheral driver.
-
-Environment:
-
-    kernel-mode only
-
-Revision History:
-
---*/
-
 #ifndef _INTERNAL_H_
 #define _INTERNAL_H_
 

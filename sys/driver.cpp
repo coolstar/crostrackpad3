@@ -1,24 +1,3 @@
-/*++
-
-Copyright (c) Microsoft Corporation.  All rights reserved.
-
-Module Name: 
-
-    driver.cpp
-
-Abstract:
-
-    This module contains the WDF driver initialization 
-    functions for the peripheral driver.
-
-Environment:
-
-    kernel-mode only
-
-Revision History:
-
---*/
-
 #include "internal.h"
 #include "driver.h"
 #include "device.h"

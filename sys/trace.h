@@ -1,24 +1,3 @@
-/*++
-
-Copyright (c) Microsoft Corporation.  All rights reserved.
-
-Module Name: 
-
-    trace.h
-
-Abstract:
-
-    This module contains the trace definitions for the SPB
-    peripheral driver.
-
-Environment:
-
-    kernel-mode only
-
-Revision History:
-
---*/
-
 #include <evntrace.h>
 
 #ifndef _TRACE_H_

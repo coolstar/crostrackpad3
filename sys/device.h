@@ -1,24 +1,3 @@
-/*++
-
-Copyright (c) Microsoft Corporation.  All rights reserved.
-
-Module Name: 
-
-    device.h
-
-Abstract:
-
-    This module contains the function definitions for
-    the WDF device.
-
-Environment:
-
-    kernel-mode only
-
-Revision History:
-
---*/
-
 #ifndef _DEVICE_H_
 #define _DEVICE_H_
 
