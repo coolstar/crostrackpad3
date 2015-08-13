@@ -411,11 +411,9 @@ void MySendInput(PDEVICE_CONTEXT pDevice, INPUT* pinput, cyapa_softc *softc){
 	}
 	else if (input.mi.dwFlags == MOUSEEVENTF_WHEEL){
 		wheelPosition = (input.mi.mouseData / 7);
-		//VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Wheel not supported!\n");
 	}
 	else if (input.mi.dwFlags == MOUSEEVENTF_HWHEEL){
 		wheelHPosition = (input.mi.mouseData / 7);
-		//VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Horizontal Wheel not supported!\n");
 	}
 	update_relative_mouse(pDevice, button, x, y, wheelPosition, wheelHPosition);
 }
@@ -430,7 +428,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 
 	//	system("cls");
 #ifdef DEBUG
-	VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"stat %02x\tTracking ID: %d\tbuttons %c%c%c\tnfngrs=%d\n",
+	CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "stat %02x\tTracking ID: %d\tbuttons %c%c%c\tnfngrs=%d\n",
 		regs->stat,
 		regs->touch->id,
 		((regs->fngr & CYAPA_FNGR_LEFT) ? 'L' : '-'),
@@ -442,16 +440,16 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 
 	for (i = 0; i < nfingers; ++i) {
 #ifdef DEBUG
-		VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL," [x=%04d y=%04d p=%d]\n",
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, " [x=%04d y=%04d p=%d]\n",
 			CYAPA_TOUCH_X(regs, i),
 			CYAPA_TOUCH_Y(regs, i),
 			CYAPA_TOUCH_P(regs, i));
 		if (CYAPA_TOUCH_Y(regs, i) > 400){
 			if (CYAPA_TOUCH_X(regs, i) < 400){
-				VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate left hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
+				CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate left hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
 			}
 			else {
-				VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate right hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
+				CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate right hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
 			}
 		}
 #endif
@@ -472,7 +470,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 
 	if (afingers > 0){
 #ifdef DEBUG
-		VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Tick inc.\n");
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Tick inc.\n");
 #endif
 		sc->tick += tickinc;
 		x = CYAPA_TOUCH_X(regs, 0);
@@ -490,7 +488,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 				y = y2;
 			}
 #ifdef DEBUG
-			VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"%d %d\t%d %d\t%d %d\n", x, y, x1, y1, x2, y2);
+			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "%d %d\t%d %d\t%d %d\n", x, y, x1, y1, x2, y2);
 #endif
 		}
 		else {
@@ -527,7 +525,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			MySendInput(pDevice, &input, sc);
 			sc->tickssincelastclick = 0;
 #ifdef DEBUG
-			VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Tap to Click!\n");
+			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Tap to Click!\n");
 #endif
 		}
 		sc->tick = 0;
@@ -535,7 +533,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		sc->mousedownfromtap = false;
 		sc->tickssincelastclick+=tickinc;
 #ifdef DEBUG
-		VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Move Reset!\n");
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Move Reset!\n");
 #endif
 	}
 
@@ -553,11 +551,11 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			sc->mousedownfromtap = true;
 			sc->tickssincelastclick = 0;
 #ifdef DEBUG
-			VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Move from tap!\n");
+			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Move from tap!\n");
 #endif
 		}
 #ifdef DEBUG
-		VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Has moved!\n");
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Has moved!\n");
 #endif
 	}
 	if (overrideDeltas){
@@ -637,7 +635,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 				}
 			}
 #ifdef DEBUG
-			VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Multitasking Gestures!\n");
+			CyapaPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Multitasking Gestures!\n");
 #endif
 			sc->multitaskinggesturetick++;
 		}

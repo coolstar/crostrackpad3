@@ -1,5 +1,5 @@
-#if !defined(_VMULTI_H_)
-#define _VMULTI_H_
+#if !defined(_CYAPA_H_)
+#define _CYAPA_H_
 
 #pragma warning(disable:4200)  // suppress nameless struct/union warning
 #pragma warning(disable:4201)  // suppress nameless struct/union warning
