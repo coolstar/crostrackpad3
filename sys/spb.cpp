@@ -22,9 +22,6 @@ Revision History:
 #include "hiddevice.h"
 #include "spb.h"
 
-static ULONG VMultiDebugLevel = 100;
-static ULONG VMultiDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
-
 NTSTATUS
 SpbDoWriteDataSynchronously(
 IN SPB_CONTEXT *SpbContext,

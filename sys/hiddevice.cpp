@@ -7,115 +7,8 @@
 // Globals
 //
 
-static ULONG VMultiDebugLevel = 100;
-static ULONG VMultiDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
-
 NTSTATUS
-VMultiEvtWdmPreprocessMnQueryId(
-WDFDEVICE Device,
-PIRP Irp
-)
-{
-	NTSTATUS            status;
-	PIO_STACK_LOCATION  IrpStack, previousSp;
-	PDEVICE_OBJECT      DeviceObject;
-	PWCHAR              buffer;
-
-	PAGED_CODE();
-
-	//
-	// Get a pointer to the current location in the Irp
-	//
-
-	IrpStack = IoGetCurrentIrpStackLocation(Irp);
-
-	//
-	// Get the device object
-	//
-	DeviceObject = WdfDeviceWdmGetDeviceObject(Device);
-
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_PNP,
-		"VMultiEvtWdmPreprocessMnQueryId Entry\n");
-
-	//
-	// This check is required to filter out QUERY_IDs forwarded
-	// by the HIDCLASS for the parent FDO. These IDs are sent
-	// by PNP manager for the parent FDO if you root-enumerate this driver.
-	//
-	previousSp = ((PIO_STACK_LOCATION)((UCHAR *)(IrpStack)+
-		sizeof(IO_STACK_LOCATION)));
-
-	if (previousSp->DeviceObject == DeviceObject)
-	{
-		//
-		// Filtering out this basically prevents the Found New Hardware
-		// popup for the root-enumerated VMulti on reboot.
-		//
-		status = Irp->IoStatus.Status;
-	}
-	else
-	{
-		switch (IrpStack->Parameters.QueryId.IdType)
-		{
-		case BusQueryDeviceID:
-		case BusQueryHardwareIDs:
-			//
-			// HIDClass is asking for child deviceid & hardwareids.
-			// Let us just make up some id for our child device.
-			//
-			buffer = (PWCHAR)ExAllocatePoolWithTag(
-				NonPagedPool,
-				CYAPA_HARDWARE_IDS_LENGTH,
-				CYAPA_POOL_TAG
-				);
-
-			if (buffer)
-			{
-				//
-				// Do the copy, store the buffer in the Irp
-				//
-				RtlCopyMemory(buffer,
-					CYAPA_HARDWARE_IDS,
-					CYAPA_HARDWARE_IDS_LENGTH
-					);
-
-				Irp->IoStatus.Information = (ULONG_PTR)buffer;
-				status = STATUS_SUCCESS;
-			}
-			else
-			{
-				//
-				//  No memory
-				//
-				status = STATUS_INSUFFICIENT_RESOURCES;
-			}
-
-			Irp->IoStatus.Status = status;
-			//
-			// We don't need to forward this to our bus. This query
-			// is for our child so we should complete it right here.
-			// fallthru.
-			//
-			IoCompleteRequest(Irp, IO_NO_INCREMENT);
-
-			break;
-
-		default:
-			status = Irp->IoStatus.Status;
-			IoCompleteRequest(Irp, IO_NO_INCREMENT);
-			break;
-		}
-	}
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiEvtWdmPreprocessMnQueryId Exit = 0x%x\n", status);
-
-	return status;
-}
-
-NTSTATUS
-VMultiGetHidDescriptor(
+CyapaGetHidDescriptor(
 IN WDFDEVICE Device,
 IN WDFREQUEST Request
 )
@@ -127,7 +20,7 @@ IN WDFREQUEST Request
 	UNREFERENCED_PARAMETER(Device);
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetHidDescriptor Entry\n");
+		"CyapaGetHidDescriptor Entry\n");
 
 	//
 	// This IOCTL is METHOD_NEITHER so WdfRequestRetrieveOutputMemory
@@ -182,13 +75,13 @@ IN WDFREQUEST Request
 	WdfRequestSetInformation(Request, bytesToCopy);
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetHidDescriptor Exit = 0x%x\n", status);
+		"CyapaGetHidDescriptor Exit = 0x%x\n", status);
 
 	return status;
 }
 
 NTSTATUS
-VMultiGetReportDescriptor(
+CyapaGetReportDescriptor(
 IN WDFDEVICE Device,
 IN WDFREQUEST Request
 )
@@ -200,7 +93,7 @@ IN WDFREQUEST Request
 	UNREFERENCED_PARAMETER(Device);
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetReportDescriptor Entry\n");
+		"CyapaGetReportDescriptor Entry\n");
 
 	//
 	// This IOCTL is METHOD_NEITHER so WdfRequestRetrieveOutputMemory
@@ -253,14 +146,14 @@ IN WDFREQUEST Request
 	WdfRequestSetInformation(Request, bytesToCopy);
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetReportDescriptor Exit = 0x%x\n", status);
+		"CyapaGetReportDescriptor Exit = 0x%x\n", status);
 
 	return status;
 }
 
 
 NTSTATUS
-VMultiGetDeviceAttributes(
+CyapaGetDeviceAttributes(
 IN WDFREQUEST Request
 )
 {
@@ -268,7 +161,7 @@ IN WDFREQUEST Request
 	PHID_DEVICE_ATTRIBUTES   deviceAttributes = NULL;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetDeviceAttributes Entry\n");
+		"CyapaGetDeviceAttributes Entry\n");
 
 	//
 	// This IOCTL is METHOD_NEITHER so WdfRequestRetrieveOutputMemory
@@ -296,9 +189,9 @@ IN WDFREQUEST Request
 	//
 
 	deviceAttributes->Size = sizeof(HID_DEVICE_ATTRIBUTES);
-	deviceAttributes->VendorID = VMULTI_VID;
-	deviceAttributes->ProductID = VMULTI_PID;
-	deviceAttributes->VersionNumber = VMULTI_VERSION;
+	deviceAttributes->VendorID = CYAPA_VID;
+	deviceAttributes->ProductID = CYAPA_PID;
+	deviceAttributes->VersionNumber = CYAPA_VERSION;
 
 	//
 	// Report how many bytes were copied
@@ -306,13 +199,13 @@ IN WDFREQUEST Request
 	WdfRequestSetInformation(Request, sizeof(HID_DEVICE_ATTRIBUTES));
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetDeviceAttributes Exit = 0x%x\n", status);
+		"CyapaGetDeviceAttributes Exit = 0x%x\n", status);
 
 	return status;
 }
 
 NTSTATUS
-VMultiGetString(
+CyapaGetString(
 IN WDFREQUEST Request
 )
 {
@@ -324,7 +217,7 @@ IN WDFREQUEST Request
 	void *pStringBuffer = NULL;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetString Entry\n");
+		"CyapaGetString Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
 	WdfRequestGetParameters(Request, &params);
@@ -354,7 +247,7 @@ IN WDFREQUEST Request
 	{
 
 		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiGetString Invalid request type\n");
+			"CyapaGetString Invalid request type\n");
 
 		status = STATUS_INVALID_PARAMETER;
 
@@ -370,7 +263,7 @@ IN WDFREQUEST Request
 	{
 
 		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiGetString WdfRequestRetrieveOutputBuffer failed Status 0x%x\n", status);
+			"CyapaGetString WdfRequestRetrieveOutputBuffer failed Status 0x%x\n", status);
 
 		return status;
 	}
@@ -380,114 +273,14 @@ IN WDFREQUEST Request
 	WdfRequestSetInformation(Request, lenID);
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetString Exit = 0x%x\n", status);
+		"CyapaGetString Exit = 0x%x\n", status);
 
 	return status;
 }
 
 NTSTATUS
-VMultiWriteReport(
-IN PVMULTI_CONTEXT DevContext,
-IN WDFREQUEST Request
-)
-{
-	NTSTATUS status = STATUS_SUCCESS;
-	WDF_REQUEST_PARAMETERS params;
-	PHID_XFER_PACKET transferPacket = NULL;
-	VMultiControlReportHeader* pReport = NULL;
-	size_t bytesWritten = 0;
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiWriteReport Entry\n");
-
-	WDF_REQUEST_PARAMETERS_INIT(&params);
-	WdfRequestGetParameters(Request, &params);
-
-	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
-	{
-		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiWriteReport Xfer packet too small\n");
-
-		status = STATUS_BUFFER_TOO_SMALL;
-	}
-	else
-	{
-
-		transferPacket = (PHID_XFER_PACKET)WdfRequestWdmGetIrp(Request)->UserBuffer;
-
-		if (transferPacket == NULL)
-		{
-			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-				"VMultiWriteReport No xfer packet\n");
-
-			status = STATUS_INVALID_DEVICE_REQUEST;
-		}
-		else
-		{
-			//
-			// switch on the report id
-			//
-
-			switch (transferPacket->reportId)
-			{
-			case REPORTID_CONTROL:
-
-				pReport = (VMultiControlReportHeader*)transferPacket->reportBuffer;
-
-				if (pReport->ReportLength <= transferPacket->reportBufferLen - sizeof(VMultiControlReportHeader))
-				{
-					status = VMultiProcessVendorReport(
-						DevContext,
-						transferPacket->reportBuffer + sizeof(VMultiControlReportHeader),
-						pReport->ReportLength,
-						&bytesWritten);
-
-					if (NT_SUCCESS(status))
-					{
-						//
-						// Report how many bytes were written
-						//
-
-						WdfRequestSetInformation(Request, bytesWritten);
-
-						CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
-							"VMultiWriteReport %d bytes written\n", bytesWritten);
-					}
-				}
-				else
-				{
-					status = STATUS_INVALID_PARAMETER;
-
-					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-						"VMultiWriteReport Error pReport.ReportLength (%d) is too big for buffer size (%d)\n",
-						pReport->ReportLength,
-						transferPacket->reportBufferLen - sizeof(VMultiControlReportHeader));
-				}
-
-				break;
-
-			default:
-
-				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-					"VMultiWriteReport Unhandled report type %d\n", transferPacket->reportId);
-
-				status = STATUS_INVALID_PARAMETER;
-
-				break;
-			}
-		}
-	}
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiWriteReport Exit = 0x%x\n", status);
-
-	return status;
-
-}
-
-NTSTATUS
-VMultiProcessVendorReport(
-IN PVMULTI_CONTEXT DevContext,
+CyapaProcessVendorReport(
+IN PDEVICE_CONTEXT DevContext,
 IN PVOID ReportBuffer,
 IN ULONG ReportBufferLen,
 OUT size_t* BytesWritten
@@ -499,7 +292,7 @@ OUT size_t* BytesWritten
 	size_t bytesReturned = 0;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiProcessVendorReport Entry\n");
+		"CyapaProcessVendorReport Entry\n");
 
 	status = WdfIoQueueRetrieveNextRequest(DevContext->ReportQueue,
 		&reqRead);
@@ -535,7 +328,7 @@ OUT size_t* BytesWritten
 				bytesReturned);
 
 			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
-				"VMultiProcessVendorReport %d bytes returned\n", bytesReturned);
+				"CyapaProcessVendorReport %d bytes returned\n", bytesReturned);
 
 			//
 			// Return the number of bytes written for the write request completion
@@ -562,14 +355,14 @@ OUT size_t* BytesWritten
 	}
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiProcessVendorReport Exit = 0x%x\n", status);
+		"CyapaProcessVendorReport Exit = 0x%x\n", status);
 
 	return status;
 }
 
 NTSTATUS
-VMultiReadReport(
-IN PVMULTI_CONTEXT DevContext,
+CyapaReadReport(
+IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 )
@@ -577,7 +370,7 @@ OUT BOOLEAN* CompleteRequest
 	NTSTATUS status = STATUS_SUCCESS;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiReadReport Entry\n");
+		"CyapaReadReport Entry\n");
 
 	//
 	// Forward this read request to our manual queue
@@ -599,110 +392,25 @@ OUT BOOLEAN* CompleteRequest
 	}
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiReadReport Exit = 0x%x\n", status);
+		"CyapaReadReport Exit = 0x%x\n", status);
 
 	return status;
 }
 
 NTSTATUS
-VMultiSetFeature(
-IN PVMULTI_CONTEXT DevContext,
+CyapaGetFeature(
+IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 )
 {
-	NTSTATUS status = STATUS_SUCCESS;
-	WDF_REQUEST_PARAMETERS params;
-	PHID_XFER_PACKET transferPacket = NULL;
-	VMultiFeatureReport* pReport = NULL;
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiSetFeature Entry\n");
-
-	WDF_REQUEST_PARAMETERS_INIT(&params);
-	WdfRequestGetParameters(Request, &params);
-
-	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
-	{
-		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiSetFeature Xfer packet too small\n");
-
-		status = STATUS_BUFFER_TOO_SMALL;
-	}
-	else
-	{
-
-		transferPacket = (PHID_XFER_PACKET)WdfRequestWdmGetIrp(Request)->UserBuffer;
-
-		if (transferPacket == NULL)
-		{
-			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-				"VMultiWriteReport No xfer packet\n");
-
-			status = STATUS_INVALID_DEVICE_REQUEST;
-		}
-		else
-		{
-			//
-			// switch on the report id
-			//
-
-			switch (transferPacket->reportId)
-			{
-			case REPORTID_FEATURE:
-
-				if (transferPacket->reportBufferLen == sizeof(VMultiFeatureReport))
-				{
-					pReport = (VMultiFeatureReport*)transferPacket->reportBuffer;
-
-					DevContext->DeviceMode = pReport->DeviceMode;
-
-					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
-						"VMultiSetFeature DeviceMode = 0x%x\n", DevContext->DeviceMode);
-				}
-				else
-				{
-					status = STATUS_INVALID_PARAMETER;
-
-					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-						"VMultiSetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiFeatureReport) (%d)\n",
-						transferPacket->reportBufferLen,
-						sizeof(VMultiFeatureReport));
-				}
-
-				break;
-
-			default:
-
-				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-					"VMultiSetFeature Unhandled report type %d\n", transferPacket->reportId);
-
-				status = STATUS_INVALID_PARAMETER;
-
-				break;
-			}
-		}
-	}
-
-	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiSetFeature Exit = 0x%x\n", status);
-
-	return status;
-}
-
-NTSTATUS
-VMultiGetFeature(
-IN PVMULTI_CONTEXT DevContext,
-IN WDFREQUEST Request,
-OUT BOOLEAN* CompleteRequest
-)
-{
+	UNREFERENCED_PARAMETER(CompleteRequest);
 	NTSTATUS status = STATUS_SUCCESS;
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetFeature Entry\n");
+		"CyapaGetFeature Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
 	WdfRequestGetParameters(Request, &params);
@@ -710,7 +418,7 @@ OUT BOOLEAN* CompleteRequest
 	if (params.Parameters.DeviceIoControl.OutputBufferLength < sizeof(HID_XFER_PACKET))
 	{
 		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiGetFeature Xfer packet too small\n");
+			"CyapaGetFeature Xfer packet too small\n");
 
 		status = STATUS_BUFFER_TOO_SMALL;
 	}
@@ -722,7 +430,7 @@ OUT BOOLEAN* CompleteRequest
 		if (transferPacket == NULL)
 		{
 			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-				"VMultiGetFeature No xfer packet\n");
+				"CyapaGetFeature No xfer packet\n");
 
 			status = STATUS_INVALID_DEVICE_REQUEST;
 		}
@@ -737,27 +445,27 @@ OUT BOOLEAN* CompleteRequest
 			case REPORTID_FEATURE:
 			{
 
-				VMultiFeatureReport* pReport = NULL;
+				CyapaFeatureReport* pReport = NULL;
 
-				if (transferPacket->reportBufferLen == sizeof(VMultiFeatureReport))
+				if (transferPacket->reportBufferLen == sizeof(CyapaFeatureReport))
 				{
-					pReport = (VMultiFeatureReport*)transferPacket->reportBuffer;
+					pReport = (CyapaFeatureReport*)transferPacket->reportBuffer;
 
 					pReport->DeviceMode = DevContext->DeviceMode;
 
 					pReport->DeviceIdentifier = 0;
 
 					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
-						"VMultiGetFeature DeviceMode = 0x%x\n", DevContext->DeviceMode);
+						"CyapaGetFeature DeviceMode = 0x%x\n", DevContext->DeviceMode);
 				}
 				else
 				{
 					status = STATUS_INVALID_PARAMETER;
 
 					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-						"VMultiGetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiFeatureReport) (%d)\n",
+						"CyapaGetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(CyapaFeatureReport) (%d)\n",
 						transferPacket->reportBufferLen,
-						sizeof(VMultiFeatureReport));
+						sizeof(CyapaFeatureReport));
 				}
 
 				break;
@@ -766,7 +474,7 @@ OUT BOOLEAN* CompleteRequest
 			default:
 
 				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-					"VMultiGetFeature Unhandled report type %d\n", transferPacket->reportId);
+					"CyapaGetFeature Unhandled report type %d\n", transferPacket->reportId);
 
 				status = STATUS_INVALID_PARAMETER;
 
@@ -776,7 +484,7 @@ OUT BOOLEAN* CompleteRequest
 	}
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiGetFeature Exit = 0x%x\n", status);
+		"CyapaGetFeature Exit = 0x%x\n", status);
 
 	return status;
 }

@@ -5,10 +5,10 @@
 #define MOUSEEVENTF_HWHEEL 0x01000
 
 struct MOUSEINPUT {
-	long dx;
-	long dy;
+	BYTE dx;
+	BYTE dy;
 	int32_t dwFlags;
-	int32_t mouseData;
+	BYTE mouseData;
 };
 
 struct INPUT {

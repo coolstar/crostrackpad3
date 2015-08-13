@@ -141,75 +141,50 @@ CONST HID_DESCRIPTOR DefaultHidDescriptor = {
 };
 #endif
 
-#define VMULTI_CONTEXT DEVICE_CONTEXT
-#define PVMULTI_CONTEXT PDEVICE_CONTEXT
-#define VMultiGetDeviceContext GetDeviceContext
-
 //
 // Function definitions
 //
 
-DRIVER_INITIALIZE DriverEntry;
-
-EVT_WDF_DRIVER_UNLOAD VMultiDriverUnload;
-
-EVT_WDF_DRIVER_DEVICE_ADD VMultiEvtDeviceAdd;
-
-EVT_WDFDEVICE_WDM_IRP_PREPROCESS VMultiEvtWdmPreprocessMnQueryId;
-
 NTSTATUS
-VMultiGetHidDescriptor(
+CyapaGetHidDescriptor(
 IN WDFDEVICE Device,
 IN WDFREQUEST Request
 );
 
 NTSTATUS
-VMultiGetReportDescriptor(
+CyapaGetReportDescriptor(
 IN WDFDEVICE Device,
 IN WDFREQUEST Request
 );
 
 NTSTATUS
-VMultiGetDeviceAttributes(
+CyapaGetDeviceAttributes(
 IN WDFREQUEST Request
 );
 
 NTSTATUS
-VMultiGetString(
+CyapaGetString(
 IN WDFREQUEST Request
 );
 
 NTSTATUS
-VMultiWriteReport(
-IN PVMULTI_CONTEXT DevContext,
-IN WDFREQUEST Request
-);
-
-NTSTATUS
-VMultiProcessVendorReport(
-IN PVMULTI_CONTEXT DevContext,
+CyapaProcessVendorReport(
+IN PDEVICE_CONTEXT DevContext,
 IN PVOID ReportBuffer,
 IN ULONG ReportBufferLen,
 OUT size_t* BytesWritten
 );
 
 NTSTATUS
-VMultiReadReport(
-IN PVMULTI_CONTEXT DevContext,
+CyapaReadReport(
+IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 );
 
 NTSTATUS
-VMultiSetFeature(
-IN PVMULTI_CONTEXT DevContext,
-IN WDFREQUEST Request,
-OUT BOOLEAN* CompleteRequest
-);
-
-NTSTATUS
-VMultiGetFeature(
-IN PVMULTI_CONTEXT DevContext,
+CyapaGetFeature(
+IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 );

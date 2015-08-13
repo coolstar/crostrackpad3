@@ -5,9 +5,6 @@
 #include "hiddevice.h"
 #include "input.h"
 
-static ULONG VMultiDebugLevel = 100;
-static ULONG VMultiDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
-
 void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cyapa_regs *regs, int tickinc);
 void CyapaTimerFunc(_In_ WDFTIMER hTimer);
 
@@ -258,10 +255,6 @@ OnDeviceAdd(
     }
 
 	WDF_IO_QUEUE_CONFIG           queueConfig;
-	WDFQUEUE                      queue;
-	PVMULTI_CONTEXT               devContext;
-
-	devContext = VMultiGetDeviceContext(pDevice->FxDevice);
 
 	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
 
@@ -270,7 +263,7 @@ OnDeviceAdd(
 	status = WdfIoQueueCreate(pDevice->FxDevice,
 		&queueConfig,
 		WDF_NO_OBJECT_ATTRIBUTES,
-		&devContext->ReportQueue
+		&pDevice->ReportQueue
 		);
 
 	if (!NT_SUCCESS(status))
@@ -295,7 +288,7 @@ OnDeviceAdd(
 		fxDevice,
 		&interruptConfig,
 		WDF_NO_OBJECT_ATTRIBUTES,
-		&devContext->Interrupt);
+		&pDevice->Interrupt);
 
 	if (!NT_SUCCESS(status))
 	{
@@ -325,7 +318,7 @@ OnDeviceAdd(
 	CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
 		"Success! 0x%x\n", status);
 
-	devContext->DeviceMode = DEVICE_MODE_MOUSE;
+	pDevice->DeviceMode = DEVICE_MODE_MOUSE;
 
 exit:
 
@@ -338,6 +331,8 @@ exit:
 BOOLEAN OnInterruptIsr(
 	WDFINTERRUPT Interrupt,
 	ULONG MessageID){
+	UNREFERENCED_PARAMETER(MessageID);
+
 	WDFDEVICE Device = WdfInterruptGetDevice(Interrupt);
 	PDEVICE_CONTEXT pDevice = GetDeviceContext(Device);
 
@@ -374,11 +369,7 @@ static int distancesq(int delta_x, int delta_y){
 
 static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	BYTE x, BYTE y, BYTE wheelPosition, BYTE wheelHPosition){
-#ifdef DEBUG
-	VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Move Mouse. Buttons: %d X: %d Y: %d!\n", button, x, y);
-#endif
-
-	_VMULTI_RELATIVE_MOUSE_REPORT report;
+	_CYAPA_RELATIVE_MOUSE_REPORT report;
 	report.ReportID = REPORTID_RELATIVE_MOUSE;
 	report.Button = button;
 	report.XValue = x;
@@ -386,18 +377,11 @@ static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	report.WheelPosition = wheelPosition;
 	report.HWheelPosition = wheelHPosition;
 	size_t bytesWritten;
-	VMultiProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
-#ifdef DEBUG
-	VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Bytes Written: %d\n", bytesWritten);
-#endif
+	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
 static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
-#ifdef DEBUG
-	VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Update keyboard. ShiftKeys: %d Codes: %d %d %d %d %d %d!\n", shiftKeys, keyCodes[0], keyCodes[1], keyCodes[2], keyCodes[3], keyCodes[4], keyCodes[5]);
-#endif
-
-	_VMULTI_KEYBOARD_REPORT report;
+	_CYAPA_KEYBOARD_REPORT report;
 	report.ReportID = REPORTID_KEYBOARD;
 	report.ShiftKeyFlags = shiftKeys;
 	for (int i = 0; i < KBD_KEY_CODES; i++){
@@ -405,13 +389,10 @@ static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCod
 	}
 
 	size_t bytesWritten;
-	VMultiProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
-#ifdef DEBUG
-	VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Bytes Written: %d\n", bytesWritten);
-#endif
+	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-void MySendInput(PDEVICE_CONTEXT pDevice, int count, INPUT* pinput, cyapa_softc *softc, size_t size){
+void MySendInput(PDEVICE_CONTEXT pDevice, INPUT* pinput, cyapa_softc *softc){
 	INPUT input = *pinput;
 	BYTE button = 0, x = 0, y = 0, wheelPosition = 0, wheelHPosition = 0;
 	if (softc->mousedown){
@@ -543,7 +524,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			input.mi.dy = 0;
 			input.mi.mouseData = 0;
 			sc->mousedown = true;
-			MySendInput(pDevice, 1, &input, sc, sizeof(INPUT));
+			MySendInput(pDevice, &input, sc);
 			sc->tickssincelastclick = 0;
 #ifdef DEBUG
 			VMultiPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Tap to Click!\n");
@@ -566,7 +547,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			input.mi.dx = 0;
 			input.mi.dy = 0;
 			input.mi.mouseData = 0;
-			MySendInput(pDevice, 1, &input, sc, sizeof(INPUT));
+			MySendInput(pDevice, &input, sc);
 			sc->mousebutton = 0;
 			sc->mousedown = true;
 			sc->mousedownfromtap = true;
@@ -597,22 +578,22 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 
 	INPUT input;
 	if (afingers < 2 || sc->mousedown){
-		input.mi.dx = delta_x;
-		input.mi.dy = delta_y;
+		input.mi.dx = (BYTE)delta_x;
+		input.mi.dy = (BYTE)delta_y;
 		input.mi.dwFlags = MOUSEEVENTF_MOVE;
 		if (delta_x != 0 && delta_y != 0)
-			MySendInput(pDevice, 1, &input, sc, sizeof(input));
+			MySendInput(pDevice, &input, sc);
 	}
 	else if (afingers == 2){
 		if (abs(delta_x) > abs(delta_y)){
 			input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
-			input.mi.mouseData = -delta_x;
-			MySendInput(pDevice, 1, &input, sc, sizeof(input));
+			input.mi.mouseData = (BYTE)-delta_x;
+			MySendInput(pDevice, &input, sc);
 		}
 		else if (abs(delta_y) > abs(delta_x)){
 			input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-			input.mi.mouseData = delta_y;
-			MySendInput(pDevice, 1, &input, sc, sizeof(input));
+			input.mi.mouseData = (BYTE)delta_y;
+			MySendInput(pDevice, &input, sc);
 		}
 	}
 	else if (afingers == 3){
@@ -695,7 +676,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			input.mi.dx = 0;
 			input.mi.dy = 0;
 			input.mi.mouseData = 0;
-			MySendInput(pDevice, 1, &input, sc, sizeof(INPUT));
+			MySendInput(pDevice, &input, sc);
 		}
 		if (!overrideDeltas){
 			sc->x = x;
@@ -725,6 +706,6 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		input.mi.dx = 0;
 		input.mi.dy = 0;
 		input.mi.mouseData = 0;
-		MySendInput(pDevice, 1, &input, sc, sizeof(INPUT));
+		MySendInput(pDevice, &input, sc);
 	}
 }

@@ -3,9 +3,6 @@
 #include "hiddevice.h"
 #include "spb.h"
 
-static ULONG VMultiDebugLevel = 100;
-static ULONG VMultiDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
-
 //#include "device.tmh"
 
 bool deviceLoaded = false;
@@ -46,7 +43,6 @@ OnPrepareHardware(
 
     PDEVICE_CONTEXT pDevice = GetDeviceContext(FxDevice);
     BOOLEAN fSpbResourceFound = FALSE;
-    ULONG interruptIndex = 0;
     NTSTATUS status = STATUS_INSUFFICIENT_RESOURCES;
 
     UNREFERENCED_PARAMETER(FxResourcesRaw);
@@ -371,8 +367,6 @@ Return Value:
     PDEVICE_CONTEXT pDevice;
     BOOLEAN fSync = FALSE;
     NTSTATUS status = STATUS_SUCCESS;
-	PVMULTI_CONTEXT     devContext;
-
     UNREFERENCED_PARAMETER(OutputBufferLength);
     UNREFERENCED_PARAMETER(InputBufferLength);
 
@@ -403,7 +397,7 @@ Return Value:
 		//
 		// Retrieves the device's HID descriptor.
 		//
-		status = VMultiGetHidDescriptor(device, FxRequest);
+		status = CyapaGetHidDescriptor(device, FxRequest);
 		fSync = TRUE;
 		break;
 
@@ -411,7 +405,7 @@ Return Value:
 		//
 		//Retrieves a device's attributes in a HID_DEVICE_ATTRIBUTES structure.
 		//
-		status = VMultiGetDeviceAttributes(FxRequest);
+		status = CyapaGetDeviceAttributes(FxRequest);
 		fSync = TRUE;
 		break;
 
@@ -419,7 +413,7 @@ Return Value:
 		//
 		//Obtains the report descriptor for the HID device.
 		//
-		status = VMultiGetReportDescriptor(device, FxRequest);
+		status = CyapaGetReportDescriptor(device, FxRequest);
 		fSync = TRUE;
 		break;
 
@@ -437,7 +431,7 @@ Return Value:
 		// from the device extension of a top level collection associated with
 		// the device.
 		//
-		status = VMultiGetString(FxRequest);
+		status = CyapaGetString(FxRequest);
 		fSync = TRUE;
 		break;
 
@@ -446,8 +440,6 @@ Return Value:
 		//
 		//Transmits a class driver-supplied report to the device.
 		//
-		status = VMultiWriteReport(pDevice, FxRequest);
-
 		status = BOOTTRACKPAD(pDevice);
 		if (!NT_SUCCESS(status)){
 			CyapaPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
@@ -460,22 +452,14 @@ Return Value:
 		//
 		// Returns a report from the device into a class driver-supplied buffer.
 		// 
-		status = VMultiReadReport(pDevice, FxRequest, &fSync);
-		break;
-
-	case IOCTL_HID_SET_FEATURE:
-		//
-		// This sends a HID class feature report to a top-level collection of
-		// a HID class device.
-		//
-		status = VMultiSetFeature(pDevice, FxRequest, &fSync);
+		status = CyapaReadReport(pDevice, FxRequest, &fSync);
 		break;
 
 	case IOCTL_HID_GET_FEATURE:
 		//
 		// returns a feature report associated with a top-level collection
 		//
-		status = VMultiGetFeature(pDevice, FxRequest, &fSync);
+		status = CyapaGetFeature(pDevice, FxRequest, &fSync);
 		break;
 	case IOCTL_HID_ACTIVATE_DEVICE:
 		//
