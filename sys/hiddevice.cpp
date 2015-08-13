@@ -734,33 +734,6 @@ OUT BOOLEAN* CompleteRequest
 
 			switch (transferPacket->reportId)
 			{
-			case REPORTID_MTOUCH:
-			{
-
-				VMultiMaxCountReport* pReport = NULL;
-
-				if (transferPacket->reportBufferLen == sizeof(VMultiMaxCountReport))
-				{
-					pReport = (VMultiMaxCountReport*)transferPacket->reportBuffer;
-
-					pReport->MaximumCount = MULTI_MAX_COUNT;
-
-					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
-						"VMultiGetFeature MaximumCount = 0x%x\n", MULTI_MAX_COUNT);
-				}
-				else
-				{
-					status = STATUS_INVALID_PARAMETER;
-
-					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-						"VMultiGetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiMaxCountReport) (%d)\n",
-						transferPacket->reportBufferLen,
-						sizeof(VMultiMaxCountReport));
-				}
-
-				break;
-			}
-
 			case REPORTID_FEATURE:
 			{
 

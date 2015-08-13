@@ -87,58 +87,6 @@ typedef struct _VMULTI_KEYBOARD_OUTPUT_REPORT
 #pragma pack()
 
 //
-// Joystick specific report infomation
-//
-
-#pragma pack(1)
-typedef struct _VMULTI_JOYSTICK_REPORT
-{
-
-	BYTE      ReportID;
-
-	BYTE      Throttle;
-
-	BYTE      XValue;
-
-	BYTE      YValue;
-
-	BYTE      Hat;
-
-	BYTE      RXValue;
-
-	BYTE      RYValue;
-
-	USHORT    Buttons;
-
-} VMultiJoystickReport;
-#pragma pack()
-
-//
-// Digitizer specific report infomation
-//
-
-#define DIGI_TIPSWITCH_BIT    1
-#define DIGI_IN_RANGE_BIT     2
-
-#define DIGI_MIN_COORDINATE   0x0000
-#define DIGI_MAX_COORDINATE   0x7FFF
-
-#pragma pack(1)
-typedef struct _VMULTI_DIGI_REPORT
-{
-
-	BYTE      ReportID;
-
-	BYTE      Status;
-
-	USHORT    XValue;
-
-	USHORT    YValue;
-
-} VMultiDigiReport;
-#pragma pack()
-
-//
 // Mouse specific report information
 //
 
@@ -151,23 +99,6 @@ typedef struct _VMULTI_DIGI_REPORT
 
 #define MIN_WHEEL_POS   -127
 #define MAX_WHEEL_POS    127
-
-#pragma pack(1)
-typedef struct _VMULTI_MOUSE_REPORT
-{
-
-	BYTE        ReportID;
-
-	BYTE        Button;
-
-	USHORT      XValue;
-
-	USHORT      YValue;
-
-	BYTE        WheelPosition;
-
-} VMultiMouseReport;
-#pragma pack()
 
 //
 // Relative mouse specific report information
@@ -193,50 +124,6 @@ typedef struct _VMULTI_RELATIVE_MOUSE_REPORT
 	BYTE		HWheelPosition;
 
 } VMultiRelativeMouseReport;
-#pragma pack()
-
-//
-// Multitouch specific report information
-//
-
-#define MULTI_TIPSWITCH_BIT    1
-#define MULTI_IN_RANGE_BIT     2
-#define MULTI_CONFIDENCE_BIT   4
-
-#define MULTI_MIN_COORDINATE   0x0000
-#define MULTI_MAX_COORDINATE   0x7FFF
-
-#define MULTI_MAX_COUNT        20
-
-#pragma pack(1)
-typedef struct
-{
-
-	BYTE      Status;
-
-	BYTE      ContactID;
-
-	USHORT    XValue;
-
-	USHORT    YValue;
-
-	USHORT    Width;
-
-	USHORT    Height;
-
-}
-TOUCH, *PTOUCH;
-
-typedef struct _VMULTI_MULTITOUCH_REPORT
-{
-
-	BYTE      ReportID;
-
-	TOUCH     Touch[2];
-
-	BYTE      ActualCount;
-
-} VMultiMultiTouchReport;
 #pragma pack()
 
 //
