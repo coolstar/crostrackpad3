@@ -348,10 +348,5 @@
     <ClInclude Include="stdint.h" />
     <ClInclude Include="trace.h" />
   </ItemGroup>
-  <ItemGroup>
-    <MessageCompile Include="errcodes.mc">
-      <FileType>Manifest</FileType>
-    </MessageCompile>
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
