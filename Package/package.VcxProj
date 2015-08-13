@@ -111,7 +111,7 @@
     <FilesToPackage Include="@(Inf->'%(CopyOutput)')" Condition="'@(Inf)'!=''" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\sys\SpbTestTool.vcxproj">
+    <ProjectReference Include="..\sys\crostrackpad2.vcxproj">
       <Project>{412FBCA0-8A92-4A61-B8C6-E9068852F9F1}</Project>
     </ProjectReference>
   </ItemGroup>
