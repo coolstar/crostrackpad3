@@ -35,7 +35,7 @@ PIRP Irp
 	DeviceObject = WdfDeviceWdmGetDeviceObject(Device);
 
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_PNP,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_PNP,
 		"VMultiEvtWdmPreprocessMnQueryId Entry\n");
 
 	//
@@ -66,8 +66,8 @@ PIRP Irp
 			//
 			buffer = (PWCHAR)ExAllocatePoolWithTag(
 				NonPagedPool,
-				VMULTI_HARDWARE_IDS_LENGTH,
-				VMULTI_POOL_TAG
+				CYAPA_HARDWARE_IDS_LENGTH,
+				CYAPA_POOL_TAG
 				);
 
 			if (buffer)
@@ -76,8 +76,8 @@ PIRP Irp
 				// Do the copy, store the buffer in the Irp
 				//
 				RtlCopyMemory(buffer,
-					VMULTI_HARDWARE_IDS,
-					VMULTI_HARDWARE_IDS_LENGTH
+					CYAPA_HARDWARE_IDS,
+					CYAPA_HARDWARE_IDS_LENGTH
 					);
 
 				Irp->IoStatus.Information = (ULONG_PTR)buffer;
@@ -108,7 +108,7 @@ PIRP Irp
 		}
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiEvtWdmPreprocessMnQueryId Exit = 0x%x\n", status);
 
 	return status;
@@ -126,7 +126,7 @@ IN WDFREQUEST Request
 
 	UNREFERENCED_PARAMETER(Device);
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetHidDescriptor Entry\n");
 
 	//
@@ -142,7 +142,7 @@ IN WDFREQUEST Request
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfRequestRetrieveOutputMemory failed 0x%x\n", status);
 
 		return status;
@@ -157,7 +157,7 @@ IN WDFREQUEST Request
 	{
 		status = STATUS_INVALID_DEVICE_STATE;
 
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"DefaultHidDescriptor is zero, 0x%x\n", status);
 
 		return status;
@@ -170,7 +170,7 @@ IN WDFREQUEST Request
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfMemoryCopyFromBuffer failed 0x%x\n", status);
 
 		return status;
@@ -181,7 +181,7 @@ IN WDFREQUEST Request
 	//
 	WdfRequestSetInformation(Request, bytesToCopy);
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetHidDescriptor Exit = 0x%x\n", status);
 
 	return status;
@@ -199,7 +199,7 @@ IN WDFREQUEST Request
 
 	UNREFERENCED_PARAMETER(Device);
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetReportDescriptor Entry\n");
 
 	//
@@ -214,7 +214,7 @@ IN WDFREQUEST Request
 	status = WdfRequestRetrieveOutputMemory(Request, &memory);
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfRequestRetrieveOutputMemory failed 0x%x\n", status);
 
 		return status;
@@ -229,7 +229,7 @@ IN WDFREQUEST Request
 	{
 		status = STATUS_INVALID_DEVICE_STATE;
 
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"DefaultHidDescriptor's reportLength is zero, 0x%x\n", status);
 
 		return status;
@@ -241,7 +241,7 @@ IN WDFREQUEST Request
 		bytesToCopy);
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfMemoryCopyFromBuffer failed 0x%x\n", status);
 
 		return status;
@@ -252,7 +252,7 @@ IN WDFREQUEST Request
 	//
 	WdfRequestSetInformation(Request, bytesToCopy);
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetReportDescriptor Exit = 0x%x\n", status);
 
 	return status;
@@ -267,7 +267,7 @@ IN WDFREQUEST Request
 	NTSTATUS                 status = STATUS_SUCCESS;
 	PHID_DEVICE_ATTRIBUTES   deviceAttributes = NULL;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetDeviceAttributes Entry\n");
 
 	//
@@ -285,7 +285,7 @@ IN WDFREQUEST Request
 		NULL);
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfRequestRetrieveOutputBuffer failed 0x%x\n", status);
 
 		return status;
@@ -305,7 +305,7 @@ IN WDFREQUEST Request
 	//
 	WdfRequestSetInformation(Request, sizeof(HID_DEVICE_ATTRIBUTES));
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetDeviceAttributes Exit = 0x%x\n", status);
 
 	return status;
@@ -323,7 +323,7 @@ IN WDFREQUEST Request
 	WDF_REQUEST_PARAMETERS params;
 	void *pStringBuffer = NULL;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetString Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
@@ -332,11 +332,11 @@ IN WDFREQUEST Request
 	switch ((ULONG_PTR)params.Parameters.DeviceIoControl.Type3InputBuffer & 0xFFFF)
 	{
 	case HID_STRING_ID_IMANUFACTURER:
-		pwstrID = L"DJP Inc.\0";
+		pwstrID = L"CoolStar\0";
 		break;
 
 	case HID_STRING_ID_IPRODUCT:
-		pwstrID = L"Virtual Multitouch Device\0";
+		pwstrID = L"Cypress v3 Trackpad\0";
 		break;
 
 	case HID_STRING_ID_ISERIALNUMBER:
@@ -353,7 +353,7 @@ IN WDFREQUEST Request
 	if (pwstrID == NULL)
 	{
 
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"VMultiGetString Invalid request type\n");
 
 		status = STATUS_INVALID_PARAMETER;
@@ -369,7 +369,7 @@ IN WDFREQUEST Request
 	if (!NT_SUCCESS(status))
 	{
 
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"VMultiGetString WdfRequestRetrieveOutputBuffer failed Status 0x%x\n", status);
 
 		return status;
@@ -379,7 +379,7 @@ IN WDFREQUEST Request
 
 	WdfRequestSetInformation(Request, lenID);
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetString Exit = 0x%x\n", status);
 
 	return status;
@@ -397,7 +397,7 @@ IN WDFREQUEST Request
 	VMultiControlReportHeader* pReport = NULL;
 	size_t bytesWritten = 0;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiWriteReport Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
@@ -405,7 +405,7 @@ IN WDFREQUEST Request
 
 	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"VMultiWriteReport Xfer packet too small\n");
 
 		status = STATUS_BUFFER_TOO_SMALL;
@@ -417,7 +417,7 @@ IN WDFREQUEST Request
 
 		if (transferPacket == NULL)
 		{
-			VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 				"VMultiWriteReport No xfer packet\n");
 
 			status = STATUS_INVALID_DEVICE_REQUEST;
@@ -450,7 +450,7 @@ IN WDFREQUEST Request
 
 						WdfRequestSetInformation(Request, bytesWritten);
 
-						VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+						CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 							"VMultiWriteReport %d bytes written\n", bytesWritten);
 					}
 				}
@@ -458,7 +458,7 @@ IN WDFREQUEST Request
 				{
 					status = STATUS_INVALID_PARAMETER;
 
-					VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 						"VMultiWriteReport Error pReport.ReportLength (%d) is too big for buffer size (%d)\n",
 						pReport->ReportLength,
 						transferPacket->reportBufferLen - sizeof(VMultiControlReportHeader));
@@ -468,7 +468,7 @@ IN WDFREQUEST Request
 
 			default:
 
-				VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 					"VMultiWriteReport Unhandled report type %d\n", transferPacket->reportId);
 
 				status = STATUS_INVALID_PARAMETER;
@@ -478,7 +478,7 @@ IN WDFREQUEST Request
 		}
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiWriteReport Exit = 0x%x\n", status);
 
 	return status;
@@ -498,7 +498,7 @@ OUT size_t* BytesWritten
 	PVOID pReadReport = NULL;
 	size_t bytesReturned = 0;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiProcessVendorReport Entry\n");
 
 	status = WdfIoQueueRetrieveNextRequest(DevContext->ReportQueue,
@@ -534,7 +534,7 @@ OUT size_t* BytesWritten
 				status,
 				bytesReturned);
 
-			VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 				"VMultiProcessVendorReport %d bytes returned\n", bytesReturned);
 
 			//
@@ -543,7 +543,7 @@ OUT size_t* BytesWritten
 
 			*BytesWritten = bytesReturned;
 
-			VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 				"%s completed, Queue:0x%p, Request:0x%p\n",
 				DbgHidInternalIoctlString(IOCTL_HID_READ_REPORT),
 				DevContext->ReportQueue,
@@ -551,17 +551,17 @@ OUT size_t* BytesWritten
 		}
 		else
 		{
-			VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 				"WdfRequestRetrieveOutputBuffer failed Status 0x%x\n", status);
 		}
 	}
 	else
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfIoQueueRetrieveNextRequest failed Status 0x%x\n", status);
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiProcessVendorReport Exit = 0x%x\n", status);
 
 	return status;
@@ -576,7 +576,7 @@ OUT BOOLEAN* CompleteRequest
 {
 	NTSTATUS status = STATUS_SUCCESS;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiReadReport Entry\n");
 
 	//
@@ -590,7 +590,7 @@ OUT BOOLEAN* CompleteRequest
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"WdfRequestForwardToIoQueue failed Status 0x%x\n", status);
 	}
 	else
@@ -598,7 +598,7 @@ OUT BOOLEAN* CompleteRequest
 		*CompleteRequest = FALSE;
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiReadReport Exit = 0x%x\n", status);
 
 	return status;
@@ -616,7 +616,7 @@ OUT BOOLEAN* CompleteRequest
 	PHID_XFER_PACKET transferPacket = NULL;
 	VMultiFeatureReport* pReport = NULL;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiSetFeature Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
@@ -624,7 +624,7 @@ OUT BOOLEAN* CompleteRequest
 
 	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"VMultiSetFeature Xfer packet too small\n");
 
 		status = STATUS_BUFFER_TOO_SMALL;
@@ -636,7 +636,7 @@ OUT BOOLEAN* CompleteRequest
 
 		if (transferPacket == NULL)
 		{
-			VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 				"VMultiWriteReport No xfer packet\n");
 
 			status = STATUS_INVALID_DEVICE_REQUEST;
@@ -657,14 +657,14 @@ OUT BOOLEAN* CompleteRequest
 
 					DevContext->DeviceMode = pReport->DeviceMode;
 
-					VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 						"VMultiSetFeature DeviceMode = 0x%x\n", DevContext->DeviceMode);
 				}
 				else
 				{
 					status = STATUS_INVALID_PARAMETER;
 
-					VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 						"VMultiSetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiFeatureReport) (%d)\n",
 						transferPacket->reportBufferLen,
 						sizeof(VMultiFeatureReport));
@@ -674,7 +674,7 @@ OUT BOOLEAN* CompleteRequest
 
 			default:
 
-				VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 					"VMultiSetFeature Unhandled report type %d\n", transferPacket->reportId);
 
 				status = STATUS_INVALID_PARAMETER;
@@ -684,7 +684,7 @@ OUT BOOLEAN* CompleteRequest
 		}
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiSetFeature Exit = 0x%x\n", status);
 
 	return status;
@@ -701,7 +701,7 @@ OUT BOOLEAN* CompleteRequest
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetFeature Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
@@ -709,7 +709,7 @@ OUT BOOLEAN* CompleteRequest
 
 	if (params.Parameters.DeviceIoControl.OutputBufferLength < sizeof(HID_XFER_PACKET))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 			"VMultiGetFeature Xfer packet too small\n");
 
 		status = STATUS_BUFFER_TOO_SMALL;
@@ -721,7 +721,7 @@ OUT BOOLEAN* CompleteRequest
 
 		if (transferPacket == NULL)
 		{
-			VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 				"VMultiGetFeature No xfer packet\n");
 
 			status = STATUS_INVALID_DEVICE_REQUEST;
@@ -745,14 +745,14 @@ OUT BOOLEAN* CompleteRequest
 
 					pReport->MaximumCount = MULTI_MAX_COUNT;
 
-					VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 						"VMultiGetFeature MaximumCount = 0x%x\n", MULTI_MAX_COUNT);
 				}
 				else
 				{
 					status = STATUS_INVALID_PARAMETER;
 
-					VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 						"VMultiGetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiMaxCountReport) (%d)\n",
 						transferPacket->reportBufferLen,
 						sizeof(VMultiMaxCountReport));
@@ -774,14 +774,14 @@ OUT BOOLEAN* CompleteRequest
 
 					pReport->DeviceIdentifier = 0;
 
-					VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 						"VMultiGetFeature DeviceMode = 0x%x\n", DevContext->DeviceMode);
 				}
 				else
 				{
 					status = STATUS_INVALID_PARAMETER;
 
-					VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+					CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 						"VMultiGetFeature Error transferPacket->reportBufferLen (%d) is different from sizeof(VMultiFeatureReport) (%d)\n",
 						transferPacket->reportBufferLen,
 						sizeof(VMultiFeatureReport));
@@ -792,7 +792,7 @@ OUT BOOLEAN* CompleteRequest
 
 			default:
 
-				VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
 					"VMultiGetFeature Unhandled report type %d\n", transferPacket->reportId);
 
 				status = STATUS_INVALID_PARAMETER;
@@ -802,7 +802,7 @@ OUT BOOLEAN* CompleteRequest
 		}
 	}
 
-	VMultiPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
 		"VMultiGetFeature Exit = 0x%x\n", status);
 
 	return status;

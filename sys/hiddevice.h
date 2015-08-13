@@ -24,48 +24,12 @@
 
 #define DRIVERNAME                 "crostrackpad.sys: "
 
-#define VMULTI_POOL_TAG            (ULONG) 'luMV'
-#define VMULTI_HARDWARE_IDS        L"ACPI\\CYAP0000\0\0"
-#define VMULTI_HARDWARE_IDS_LENGTH sizeof(VMULTI_HARDWARE_IDS)
+#define CYAPA_POOL_TAG            (ULONG)'PAYC'
+#define CYAPA_HARDWARE_IDS        L"ACPI\\CYAP0000\0\0"
+#define CYAPA_HARDWARE_IDS_LENGTH sizeof(CYAPA_HARDWARE_IDS)
 
 #define NTDEVICE_NAME_STRING       L"\\Device\\CYAP0000"
 #define SYMBOLIC_NAME_STRING       L"\\DosDevices\\CYAP0000"
-
-#define MT_TOUCH_COLLECTION                                                    \
-    0xa1, 0x02,                         /*     COLLECTION (Logical)         */ \
-    0x09, 0x42,                         /*       USAGE (Tip Switch)         */ \
-    0x15, 0x00,                         /*       LOGICAL_MINIMUM (0)        */ \
-    0x25, 0x01,                         /*       LOGICAL_MAXIMUM (1)        */ \
-    0x75, 0x01,                         /*       REPORT_SIZE (1)            */ \
-    0x95, 0x01,                         /*       REPORT_COUNT (1)           */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x09, 0x32,                         /*       USAGE (In Range)           */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x09, 0x47,                         /*       USAGE (Confidence)         */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x95, 0x05,                         /*       REPORT_COUNT (5)           */ \
-    0x81, 0x03,                         /*       INPUT (Cnst,Ary,Abs)       */ \
-    0x75, 0x08,                         /*       REPORT_SIZE (8)            */ \
-    0x09, 0x51,                         /*       USAGE (Contact Identifier) */ \
-    0x95, 0x01,                         /*       REPORT_COUNT (1)           */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x05, 0x01,                         /*       USAGE_PAGE (Generic Desk.. */ \
-    0x26, 0xff, 0x7f,                   /*       LOGICAL_MAXIMUM (32767)    */ \
-    0x75, 0x10,                         /*       REPORT_SIZE (16)           */ \
-    0x55, 0x00,                         /*       UNIT_EXPONENT (0)          */ \
-    0x65, 0x00,                         /*       UNIT (None)                */ \
-    0x35, 0x00,                         /*       PHYSICAL_MINIMUM (0)       */ \
-    0x46, 0x00, 0x00,                   /*       PHYSICAL_MAXIMUM (0)       */ \
-    0x09, 0x30,                         /*       USAGE (X)                  */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x09, 0x31,                         /*       USAGE (Y)                  */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x05, 0x0d,                         /*       USAGE PAGE (Digitizers)    */ \
-    0x09, 0x48,                         /*       USAGE (Width)              */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0x09, 0x49,                         /*       USAGE (Height)             */ \
-    0x81, 0x02,                         /*       INPUT (Data,Var,Abs)       */ \
-    0xc0,                               /*    END_COLLECTION                */
 
 //
 // This is the default report descriptor for the Hid device provided
@@ -76,45 +40,6 @@ typedef UCHAR HID_REPORT_DESCRIPTOR, *PHID_REPORT_DESCRIPTOR;
 
 #ifdef DEFINEDESCRIPTOR
 HID_REPORT_DESCRIPTOR DefaultReportDescriptor[] = {
-	/*//
-	// Multitouch report starts here
-	//
-	0x05, 0x0d,                         // USAGE_PAGE (Digitizers)
-	0x09, 0x04,                         // USAGE (Touch Screen)
-	0xa1, 0x01,                         // COLLECTION (Application)
-	0x85, REPORTID_MTOUCH,              //   REPORT_ID (Touch)
-	0x09, 0x22,                         //   USAGE (Finger)
-	MT_TOUCH_COLLECTION
-	MT_TOUCH_COLLECTION
-	0x05, 0x0d,                         //    USAGE_PAGE (Digitizers)
-	0x09, 0x54,                         //    USAGE (Contact Count)
-	0x95, 0x01,                         //    REPORT_COUNT (1)
-	0x75, 0x08,                         //    REPORT_SIZE (8)
-	0x15, 0x00,                         //    LOGICAL_MINIMUM (0)
-	0x25, 0x08,                         //    LOGICAL_MAXIMUM (8)
-	0x81, 0x02,                         //    INPUT (Data,Var,Abs)
-	0x09, 0x55,                         //    USAGE(Contact Count Maximum)
-	0xb1, 0x02,                         //    FEATURE (Data,Var,Abs)
-	0xc0,                               // END_COLLECTION
-
-	//
-	// Feature report starts here
-	//
-	0x09, 0x0E,                         // USAGE (Device Configuration)
-	0xa1, 0x01,                         // COLLECTION (Application)
-	0x85, REPORTID_FEATURE,             //   REPORT_ID (Configuration)              
-	0x09, 0x23,                         //   USAGE (Device Settings)              
-	0xa1, 0x02,                         //   COLLECTION (logical)    
-	0x09, 0x52,                         //    USAGE (Device Mode)         
-	0x09, 0x53,                         //    USAGE (Device Identifier)
-	0x15, 0x00,                         //    LOGICAL_MINIMUM (0)      
-	0x25, 0x0a,                         //    LOGICAL_MAXIMUM (10)
-	0x75, 0x08,                         //    REPORT_SIZE (8)         
-	0x95, 0x02,                         //    REPORT_COUNT (2)         
-	0xb1, 0x02,                         //   FEATURE (Data,Var,Abs)    
-	0xc0,                               //   END_COLLECTION
-	0xc0,                               // END_COLLECTION */ 
-
 	//
 	// Relative mouse report starts here
 	//
@@ -159,41 +84,6 @@ HID_REPORT_DESCRIPTOR DefaultReportDescriptor[] = {
 	0x81, 0x06,                         //     Input (Data, Variable, Relative)
 	0xc0,                               //   END_COLLECTION
 	0xc0,                               // END_COLLECTION
-
-	/*//
-	// Digitizer report starts here
-	//
-	0x05, 0x0d,                         // USAGE_PAGE (Digitizers)
-	0x09, 0x02,                         // USAGE (Pen digitizer)
-	0xa1, 0x01,                         // COLLECTION (Application)
-	0x85, REPORTID_DIGI,                //   REPORT_ID (Digi)
-	0x05, 0x0d,                         //   USAGE_PAGE (Digitizers)
-	0x09, 0x20,                         //   USAGE (Stylus)
-	0xa1, 0x00,                         //   COLLECTION (Physical)
-	0x09, 0x42,                         //     USAGE (Tip Switch)
-	0x09, 0x32,                         //     USAGE (In Range)
-	0x15, 0x00,                         //     LOGICAL_MINIMUM (0)
-	0x25, 0x01,                         //     LOGICAL_MAXIMUM (1)
-	0x75, 0x01,                         //     REPORT_SIZE (1)
-	0x95, 0x02,                         //     REPORT_COUNT (2)
-	0x81, 0x02,                         //     INPUT (Data,Var,Abs)
-	0x75, 0x01,                         //     REPORT_SIZE (1)
-	0x95, 0x06,                         //     REPORT_COUNT (6)
-	0x81, 0x01,                         //     INPUT (Cnst,Ary,Abs)
-	0x05, 0x01,                         //     USAGE_PAGE (Generic Desktop)
-	0x26, 0xff, 0x7f,                   //     LOGICAL_MAXIMUM (32767)       
-	0x75, 0x10,                         //     REPORT_SIZE (16) 
-	0x95, 0x01,                         //     REPORT_COUNT (1)            
-	0x55, 0x0F,                         //     UNIT_EXPONENT (-1)           
-	0x65, 0x11,                         //     UNIT (cm,SI Linear)                  
-	0x35, 0x00,                         //     PHYSICAL_MINIMUM (0)         
-	0x45, 0x00,                         //     PHYSICAL_MAXIMUM (0)
-	0x09, 0x30,                         //     USAGE (X)                    
-	0x81, 0x02,                         //     INPUT (Data,Var,Abs)         
-	0x09, 0x31,                         //     USAGE (Y)                    
-	0x81, 0x02,                         //     INPUT (Data,Var,Abs)
-	0xc0,                               //   END_COLLECTION
-	0xc0,                               // END_COLLECTION*/
 
 	//
 	// Keyboard report starts here
@@ -251,19 +141,6 @@ CONST HID_DESCRIPTOR DefaultHidDescriptor = {
 };
 #endif
 
-
-/*typedef struct _VMULTI_CONTEXT
-{
-
-	WDFQUEUE ReportQueue;
-
-	BYTE DeviceMode;
-
-} VMULTI_CONTEXT, *PVMULTI_CONTEXT;
-
-WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(VMULTI_CONTEXT, VMultiGetDeviceContext)
-*/
-
 #define VMULTI_CONTEXT DEVICE_CONTEXT
 #define PVMULTI_CONTEXT PDEVICE_CONTEXT
 #define VMultiGetDeviceContext GetDeviceContext
@@ -279,8 +156,6 @@ EVT_WDF_DRIVER_UNLOAD VMultiDriverUnload;
 EVT_WDF_DRIVER_DEVICE_ADD VMultiEvtDeviceAdd;
 
 EVT_WDFDEVICE_WDM_IRP_PREPROCESS VMultiEvtWdmPreprocessMnQueryId;
-
-EVT_WDF_IO_QUEUE_IO_INTERNAL_DEVICE_CONTROL VMultiEvtInternalDeviceControl;
 
 NTSTATUS
 VMultiGetHidDescriptor(
@@ -357,16 +232,16 @@ IN ULONG        IoControlCode
 #define DBG_IOCTL 4
 
 #if 0
-#define VMultiPrint(dbglevel, dbgcatagory, fmt, ...) {          \
-    if (VMultiDebugLevel >= dbglevel &&                         \
-        (VMultiDebugCatagories && dbgcatagory))                 \
+#define CyapaPrintPrint(dbglevel, dbgcatagory, fmt, ...) {          \
+    if (CyapaPrintDebugLevel >= dbglevel &&                         \
+        (CyapaPrintDebugCatagories && dbgcatagory))                 \
 	    {                                                           \
         DbgPrint(DRIVERNAME);                                   \
         DbgPrint(fmt, __VA_ARGS__);                             \
 	    }                                                           \
 }
 #else
-#define VMultiPrint(dbglevel, fmt, ...) {                       \
+#define CyapaPrint(dbglevel, fmt, ...) {                       \
 }
 #endif
 

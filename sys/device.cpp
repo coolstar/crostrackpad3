@@ -319,7 +319,7 @@ OnTopLevelIoDefault(
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Failed to forward WDFREQUEST %p to SPB queue %p - %!STATUS!",
@@ -379,12 +379,12 @@ Return Value:
 	device = WdfIoQueueGetDevice(FxQueue);
 	pDevice = GetDeviceContext(device);
 
-    VMultiPrint(
+	CyapaPrint(
 		DEBUG_LEVEL_INFO, DBG_IOCTL,
         "DeviceIoControl request %p received with IOCTL=%lu",
         FxRequest,
         IoControlCode);
-	VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+	CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 		"%s, Queue:0x%p, Request:0x%p\n",
 		DbgHidInternalIoctlString(IoControlCode),
 		FxQueue,
@@ -450,7 +450,7 @@ Return Value:
 
 		status = BOOTTRACKPAD(pDevice);
 		if (!NT_SUCCESS(status)){
-			VMultiPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
+			CyapaPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
 		}
 		fSync = TRUE;
 		break;
@@ -489,7 +489,7 @@ Return Value:
     default:
         fSync = TRUE;
 		status = STATUS_NOT_SUPPORTED;
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_INFO, DBG_IOCTL,
             "Request %p received with unexpected IOCTL=%lu",
             FxRequest,
@@ -502,7 +502,7 @@ Return Value:
 
     if (fSync)
     {
-		VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 			"%s completed, Queue:0x%p, Request:0x%p\n",
 			DbgHidInternalIoctlString(IoControlCode),
 			FxQueue,
@@ -512,7 +512,7 @@ Return Value:
         WdfRequestComplete(FxRequest, status);
 	}
 	else {
-		VMultiPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL,
 			"%s deferred, Queue:0x%p, Request:0x%p\n",
 			DbgHidInternalIoctlString(IoControlCode),
 			FxQueue,

@@ -166,7 +166,7 @@ OnDeviceAdd(
 
         if (!NT_SUCCESS(status))
         {
-			VMultiPrint(
+			CyapaPrint(
                 TRACE_LEVEL_ERROR, 
                 TRACE_FLAG_WDFLOADING,
                 "Error creating WDFDEVICE - %!STATUS!", 
@@ -221,7 +221,7 @@ OnDeviceAdd(
 
         if (!NT_SUCCESS(status))
         {
-			VMultiPrint(
+			CyapaPrint(
                 TRACE_LEVEL_ERROR, 
                 TRACE_FLAG_WDFLOADING,
                 "Error creating top-level IO queue - %!STATUS!", 
@@ -250,7 +250,7 @@ OnDeviceAdd(
 
         if (!NT_SUCCESS(status))
         {
-			VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
 				"WdfIoQueueCreate failed 0x%x\n", status);
 
             goto exit;
@@ -275,8 +275,8 @@ OnDeviceAdd(
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "Queue 2!\n");
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "Queue 2!\n");
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
 			"WdfIoQueueCreate failed 0x%x\n", status);
 
 		return status;
@@ -299,7 +299,7 @@ OnDeviceAdd(
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
 			"Error creating WDF interrupt object - %!STATUS!",
 			status);
 
@@ -318,11 +318,11 @@ OnDeviceAdd(
 	pDevice->Timer = hTimer;
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "(%!FUNC!) WdfTimerCreate failed status:%!STATUS!\n", status);
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "(%!FUNC!) WdfTimerCreate failed status:%!STATUS!\n", status);
 		return status;
 	}
 
-	VMultiPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
+	CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP,
 		"Success! 0x%x\n", status);
 
 	devContext->DeviceMode = DEVICE_MODE_MOUSE;
@@ -368,11 +368,11 @@ void CyapaTimerFunc(_In_ WDFTIMER hTimer){
 	return;
 }
 
-int distancesq(int delta_x, int delta_y){
+static int distancesq(int delta_x, int delta_y){
 	return (delta_x * delta_x) + (delta_y*delta_y);
 }
 
-void vmulti_update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
+static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	BYTE x, BYTE y, BYTE wheelPosition, BYTE wheelHPosition){
 #ifdef DEBUG
 	VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Move Mouse. Buttons: %d X: %d Y: %d!\n", button, x, y);
@@ -392,7 +392,7 @@ void vmulti_update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 #endif
 }
 
-void vmulti_update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
+static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
 #ifdef DEBUG
 	VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Update keyboard. ShiftKeys: %d Codes: %d %d %d %d %d %d!\n", shiftKeys, keyCodes[0], keyCodes[1], keyCodes[2], keyCodes[3], keyCodes[4], keyCodes[5]);
 #endif
@@ -436,7 +436,7 @@ void MySendInput(PDEVICE_CONTEXT pDevice, int count, INPUT* pinput, cyapa_softc 
 		wheelHPosition = (input.mi.mouseData / 7);
 		//VMultiPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL, "Horizontal Wheel not supported!\n");
 	}
-	vmulti_update_relative_mouse(pDevice, button, x, y, wheelPosition, wheelHPosition);
+	update_relative_mouse(pDevice, button, x, y, wheelPosition, wheelHPosition);
 }
 
 void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cyapa_regs *regs, int tickinc){
@@ -627,10 +627,10 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 						keyCodes[0] = 0x50;
 					else
 						keyCodes[0] = 0x4F;
-					vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+					update_keyboard(pDevice, shiftKeys, keyCodes);
 					shiftKeys = 0;
 					keyCodes[0] = 0x0;
-					vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+					update_keyboard(pDevice, shiftKeys, keyCodes);
 				}
 				else if (abs(sc->multitaskingy) > abs(sc->multitaskingx)){
 					BYTE shiftKeys = KBD_LGUI_BIT;
@@ -639,10 +639,10 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 						keyCodes[0] = 0x2B;
 					else
 						keyCodes[0] = 0x07;
-					vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+					update_keyboard(pDevice, shiftKeys, keyCodes);
 					shiftKeys = 0;
 					keyCodes[0] = 0x0;
-					vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+					update_keyboard(pDevice, shiftKeys, keyCodes);
 				}
 				sc->multitaskingdone = true;
 				sc->multitaskinggesturetick = -1;
@@ -715,10 +715,10 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		if (sc->mousebutton == 3){
 			BYTE shiftKeys = KBD_LGUI_BIT;
 			BYTE keyCodes[KBD_KEY_CODES] = { 0x04, 0, 0, 0, 0, 0 };
-			vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+			update_keyboard(pDevice, shiftKeys, keyCodes);
 			shiftKeys = 0;
 			keyCodes[0] = 0x0;
-			vmulti_update_keyboard(pDevice, shiftKeys, keyCodes);
+			update_keyboard(pDevice, shiftKeys, keyCodes);
 
 		}
 		sc->mousebutton = 0;

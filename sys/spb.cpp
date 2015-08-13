@@ -24,7 +24,6 @@ Revision History:
 
 static ULONG VMultiDebugLevel = 100;
 static ULONG VMultiDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
-#define TOUCH_POOL_TAG ((ULONG) 'TBPS')
 
 NTSTATUS
 SpbDoWriteDataSynchronously(
@@ -71,14 +70,14 @@ NTSTATUS Status indicating success or failure
 		status = WdfMemoryCreate(
 			WDF_NO_OBJECT_ATTRIBUTES,
 			NonPagedPool,
-			TOUCH_POOL_TAG,
+			CYAPA_POOL_TAG,
 			length,
 			&memory,
 			(PVOID *)&buffer);
 
 		if (!NT_SUCCESS(status))
 		{
-			VMultiPrint(
+			CyapaPrint(
 				DEBUG_LEVEL_ERROR,
 				DBG_IOCTL,
 				"Error allocating memory for Spb write - %!STATUS!",
@@ -121,7 +120,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error writing to Spb - %!STATUS!",
@@ -232,7 +231,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error setting address pointer for Spb read - %!STATUS!",
@@ -245,14 +244,14 @@ NTSTATUS Status indicating success or failure
 		status = WdfMemoryCreate(
 			WDF_NO_OBJECT_ATTRIBUTES,
 			NonPagedPool,
-			TOUCH_POOL_TAG,
+			CYAPA_POOL_TAG,
 			Length,
 			&memory,
 			(PVOID *)&buffer);
 
 		if (!NT_SUCCESS(status))
 		{
-			VMultiPrint(
+			CyapaPrint(
 				DEBUG_LEVEL_ERROR,
 				DBG_IOCTL,
 				"Error allocating memory for Spb read - %!STATUS!",
@@ -287,7 +286,7 @@ NTSTATUS Status indicating success or failure
 	if (!NT_SUCCESS(status) ||
 		bytesRead != Length)
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error reading from Spb - %!STATUS!",
@@ -397,7 +396,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error creating IoTarget object - %!STATUS!",
@@ -419,7 +418,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error creating Spb resource hub path string - %!STATUS!",
@@ -440,7 +439,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error opening Spb target for communication - %!STATUS!",
@@ -455,14 +454,14 @@ NTSTATUS Status indicating success or failure
 	status = WdfMemoryCreate(
 		WDF_NO_OBJECT_ATTRIBUTES,
 		NonPagedPool,
-		TOUCH_POOL_TAG,
+		CYAPA_POOL_TAG,
 		DEFAULT_SPB_BUFFER_SIZE,
 		&SpbContext->WriteMemory,
 		NULL);
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error allocating default memory for Spb write - %!STATUS!",
@@ -473,14 +472,14 @@ NTSTATUS Status indicating success or failure
 	status = WdfMemoryCreate(
 		WDF_NO_OBJECT_ATTRIBUTES,
 		NonPagedPool,
-		TOUCH_POOL_TAG,
+		CYAPA_POOL_TAG,
 		DEFAULT_SPB_BUFFER_SIZE,
 		&SpbContext->ReadMemory,
 		NULL);
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error allocating default memory for Spb read - %!STATUS!",
@@ -497,7 +496,7 @@ NTSTATUS Status indicating success or failure
 
 	if (!NT_SUCCESS(status))
 	{
-		VMultiPrint(
+		CyapaPrint(
 			DEBUG_LEVEL_ERROR,
 			DBG_IOCTL,
 			"Error creating Spb Waitlock - %!STATUS!",
