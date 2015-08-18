@@ -8,7 +8,7 @@ struct MOUSEINPUT {
 	BYTE dx;
 	BYTE dy;
 	int32_t dwFlags;
-	BYTE mouseData;
+	int32_t mouseData;
 };
 
 struct INPUT {

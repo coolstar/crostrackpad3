@@ -410,10 +410,25 @@ void MySendInput(PDEVICE_CONTEXT pDevice, INPUT* pinput, cyapa_softc *softc){
 		//wheelPosition = pDevice->wheelPosition;
 	}
 	else if (input.mi.dwFlags == MOUSEEVENTF_WHEEL){
-		wheelPosition = (input.mi.mouseData / 7);
+		if (input.mi.mouseData > 0)
+			wheelPosition = 1;
+		else
+			wheelPosition = -1;
+		softc->scrollratelimit++;
 	}
 	else if (input.mi.dwFlags == MOUSEEVENTF_HWHEEL){
-		wheelHPosition = (input.mi.mouseData / 7);
+		if (input.mi.mouseData > 0)
+			wheelHPosition = 1;
+		else
+			wheelHPosition = -1;
+		softc->scrollratelimit++;
+	}
+	if (softc->scrollratelimit > 1){
+		softc->scrollratelimit = 0;
+	}
+	if (softc->scrollratelimit > 0){
+		wheelPosition = 0;
+		wheelHPosition = 0;
 	}
 	update_relative_mouse(pDevice, button, x, y, wheelPosition, wheelHPosition);
 }
@@ -585,12 +600,12 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 	else if (afingers == 2){
 		if (abs(delta_x) > abs(delta_y)){
 			input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
-			input.mi.mouseData = (BYTE)-delta_x;
+			input.mi.mouseData = -delta_x;
 			MySendInput(pDevice, &input, sc);
 		}
 		else if (abs(delta_y) > abs(delta_x)){
 			input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-			input.mi.mouseData = (BYTE)delta_y;
+			input.mi.mouseData = delta_y;
 			MySendInput(pDevice, &input, sc);
 		}
 	}
@@ -676,6 +691,35 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			input.mi.mouseData = 0;
 			MySendInput(pDevice, &input, sc);
 		}
+		/*else if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == true && sc->hasmoved == false){
+			int newmousebutton = sc->mousebutton;
+
+			if (afingers == 1){
+				if (sc->y < 400 || sc->x < 400){
+					newmousebutton = 0;
+				}
+				else {
+					newmousebutton = 1;
+				}
+			}
+			else if (afingers == 2){
+				newmousebutton = 1;
+			}
+			else if (afingers == 3){
+				newmousebutton = 2;
+			}
+			else if (afingers == 4){
+				newmousebutton = 3;
+			}
+
+			if (newmousebutton != sc->mousebutton){
+				input.mi.dx = 0;
+				input.mi.dy = 0;
+				input.mi.mouseData = 0;
+				sc->mousebutton = newmousebutton;
+				MySendInput(pDevice, &input, sc);
+			}
+		}*/
 		if (!overrideDeltas){
 			sc->x = x;
 			sc->y = y;

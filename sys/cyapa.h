@@ -141,6 +141,8 @@ struct cyapa_softc {
 	int multitaskingy;
 	bool multitaskingdone;
 	bool hasmoved;
+
+	int scrollratelimit = 0;
 };
 
 static int cyapa_minpressure = 16;
