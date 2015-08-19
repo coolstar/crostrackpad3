@@ -16,6 +16,7 @@
 
 #define REPORTID_FEATURE        0x02
 #define REPORTID_RELATIVE_MOUSE 0x04
+#define REPORTID_TOUCHPAD       0x05
 #define REPORTID_KEYBOARD       0x07
 
 //
