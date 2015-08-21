@@ -663,79 +663,84 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		sc->multitaskingdone = false;
 	}
 
+	if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == false){
+		sc->mousedown = true;
 
-	if (afingers > 0){
-		if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == false){
-			sc->mousedown = true;
-
-			if (afingers == 1){
-				if (sc->y < 400 || sc->x < 400){
-					sc->mousebutton = 0;
-				}
-				else {
-					sc->mousebutton = 1;
-				}
+		if (afingers == 0){
+			sc->mousebutton = 0;
+		}
+		else if (afingers == 1){
+			if (sc->y < 400 || sc->x < 400){
+				sc->mousebutton = 0;
 			}
-			else if (afingers == 2){
+			else {
 				sc->mousebutton = 1;
 			}
-			else if (afingers == 3){
-				sc->mousebutton = 2;
-			}
-			else if (afingers == 4){
-				sc->mousebutton = 3;
-			}
-
-			input.mi.dx = 0;
-			input.mi.dy = 0;
-			input.mi.mouseData = 0;
-			MySendInput(pDevice, &input, sc);
 		}
-		else if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == true){
-			bool hasBottomButton = false;
-			int bottomx = -1;
-			int bottomy = -1;
-			for (int i = 0; i < afingers; i++){
-				if (CYAPA_TOUCH_Y(regs, i) >= 400){
-					hasBottomButton = true;
-					if (bottomx == -1 || bottomx >= 400){
-						bottomx = CYAPA_TOUCH_X(regs, i);
-						bottomy = CYAPA_TOUCH_Y(regs, i);
-					}
+		else if (afingers == 2){
+			sc->mousebutton = 1;
+		}
+		else if (afingers == 3){
+			sc->mousebutton = 2;
+		}
+		else if (afingers == 4){
+			sc->mousebutton = 3;
+		}
+
+		input.mi.dx = 0;
+		input.mi.dy = 0;
+		input.mi.mouseData = 0;
+		MySendInput(pDevice, &input, sc);
+	}
+	else if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == true){
+		bool hasBottomButton = false;
+		int bottomx = -1;
+		int bottomy = -1;
+		for (int i = 0; i < afingers; i++){
+			if (CYAPA_TOUCH_Y(regs, i) >= 400){
+				hasBottomButton = true;
+				if (bottomx == -1 || bottomx >= 400){
+					bottomx = CYAPA_TOUCH_X(regs, i);
+					bottomy = CYAPA_TOUCH_Y(regs, i);
 				}
 			}
+		}
 
-			int newmousebutton = sc->mousebutton;
+		int newmousebutton = sc->mousebutton;
 
-			if (afingers == 1 || hasBottomButton){
-				if (!hasBottomButton){
-					newmousebutton = 0;
-				}
-				else if (bottomx < 400){
-					newmousebutton = 0;
-				}
-				else {
-					newmousebutton = 1;
-				}
+		if (afingers == 0){
+			sc->mousebutton = 0;
+		}
+		else if (afingers == 1 || hasBottomButton){
+			if (!hasBottomButton){
+				newmousebutton = 0;
 			}
-			else if (afingers == 2){
+			else if (bottomx < 400){
+				newmousebutton = 0;
+			}
+			else {
 				newmousebutton = 1;
 			}
-			else if (afingers == 3){
-				newmousebutton = 2;
-			}
-			else if (afingers == 4){
-				newmousebutton = 3;
-			}
-
-			if (newmousebutton != sc->mousebutton){
-				//input.mi.dx = 0;
-				//input.mi.dy = 0;
-				input.mi.mouseData = 0;
-				sc->mousebutton = newmousebutton;
-				MySendInput(pDevice, &input, sc);
-			}
 		}
+		else if (afingers == 2){
+			newmousebutton = 1;
+		}
+		else if (afingers == 3){
+			newmousebutton = 2;
+		}
+		else if (afingers == 4){
+			newmousebutton = 3;
+		}
+
+		if (newmousebutton != sc->mousebutton){
+			//input.mi.dx = 0;
+			//input.mi.dy = 0;
+			input.mi.mouseData = 0;
+			sc->mousebutton = newmousebutton;
+			MySendInput(pDevice, &input, sc);
+		}
+	}
+	if (afingers > 0){
 		if (!overrideDeltas){
 			sc->x = x;
 			sc->y = y;
