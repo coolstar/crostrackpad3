@@ -6,6 +6,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|x64'">
     <SignMode>TestSign</SignMode>
-    <TestCertificate>CN="WDKTestCert CoolStar,130827576549295560" | A75F0183435E2C90ADC34E9152363373E4EE6171</TestCertificate>
+    <TestCertificate>CN="WDKTestCert CoolStar,130866550274576043" | E2E07F625597E3627299C4699B59F9ABBB552FE9</TestCertificate>
   </PropertyGroup>
 </Project>

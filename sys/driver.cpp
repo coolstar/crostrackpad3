@@ -459,14 +459,6 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			CYAPA_TOUCH_X(regs, i),
 			CYAPA_TOUCH_Y(regs, i),
 			CYAPA_TOUCH_P(regs, i));
-		if (CYAPA_TOUCH_Y(regs, i) > 400){
-			if (CYAPA_TOUCH_X(regs, i) < 400){
-				CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate left hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
-			}
-			else {
-				CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Simulate right hardware button! %d\n", CYAPA_TOUCH_Y(regs, i));
-			}
-		}
 #endif
 		if (CYAPA_TOUCH_P(regs, i) < cyapa_minpressure)
 			--afingers;
@@ -475,13 +467,34 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 	if (regs->touch->id != sc->lastid){
 		sc->x = 0;
 		sc->y = 0;
+		sc->ignx = 0;
+		sc->igny = 0;
+		sc->lastx[0] = sc->lastx[1] = 0;
+		sc->lasty[0] = sc->lasty[1] = 0;
 		sc->lastid = regs->touch->id;
 	}
 
+	bool overrideDeltas = false;
+	bool readOnly = false;
+
+	int rox = sc->x;
+	int roy = sc->y;
+
 	int x = sc->x;
 	int y = sc->y;
-
-	bool overrideDeltas = false;
+	if (afingers == 1) {
+		x = CYAPA_TOUCH_X(regs, 0);
+		y = CYAPA_TOUCH_Y(regs, 0);
+		int testign = distancesq(x - sc->ignx, y - sc->igny);
+		if (sc->ignx != 0 && testign < 10) {
+			sc->ignx = x;
+			sc->igny = y;
+			rox = 0;
+			roy = 0;
+			overrideDeltas = true;
+			readOnly = true;
+		}
+	}
 
 	if (afingers > 0){
 #ifdef DEBUG
@@ -496,22 +509,35 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			int x2 = CYAPA_TOUCH_X(regs, 1);
 			int y2 = CYAPA_TOUCH_Y(regs, 1);
 
-			int d1 = distancesq(x1 - sc->x, y1 - sc->y);
-			int d2 = distancesq(x1 - sc->x, y1 - sc->y);
-			if (d2 < d1 || (y > 400 && y2 < 400)){
+			int d1 = distancesq(x1 - sc->lastx[0], y1 - sc->lasty[0]);
+			int d2 = distancesq(x1 - sc->lastx[1], y1 - sc->lasty[1]);
+
+			int ignt1 = distancesq(x1 - sc->ignx, y1 - sc->igny);
+			int ignt2 = distancesq(x2 - sc->ignx, y2 - sc->igny);
+
+			if (ignt2 < ignt1) {
 				x = x2;
 				y = y2;
+				sc->x = sc->lastx[1];
+				sc->y = sc->lasty[1];
+			} else if (d1 > d2){
+				x = x1;
+				y = y1;
+				sc->x = sc->lastx[0];
+				sc->y = sc->lasty[0];
+				sc->ignx = x2;
+				sc->igny = y2;
+			} else if (d2 > d1) {
+				x = x2;
+				y = y2;
+				sc->x = sc->lastx[1];
+				sc->y = sc->lasty[1];
+				sc->ignx = x1;
+				sc->igny = y1;
 			}
 #ifdef DEBUG
 			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "%d %d\t%d %d\t%d %d\n", x, y, x1, y1, x2, y2);
 #endif
-		}
-		else {
-			if (sc->mousedown && y > 400){
-				overrideDeltas = true;
-				sc->x = 0;
-				sc->y = 0;
-			}
 		}
 		if ((overrideDeltas != true) && (sc->x == 0 && sc->y == 0)){
 			sc->x = x;
@@ -551,6 +577,10 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Move Reset!\n");
 #endif
 	}
+	sc->lastx[0] = CYAPA_TOUCH_X(regs, 0);
+	sc->lasty[0] = CYAPA_TOUCH_Y(regs, 0);
+	sc->lastx[1] = CYAPA_TOUCH_X(regs, 1);
+	sc->lasty[1] = CYAPA_TOUCH_Y(regs, 1);
 
 	int delta_x = x - sc->x, delta_y = y - sc->y;
 	if (abs(delta_x) + abs(delta_y) > 10 && !sc->hasmoved){
@@ -670,12 +700,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 			sc->mousebutton = 0;
 		}
 		else if (afingers == 1){
-			if (sc->y < 400 || sc->x < 400){
-				sc->mousebutton = 0;
-			}
-			else {
-				sc->mousebutton = 1;
-			}
+			sc->mousebutton = 0;
 		}
 		else if (afingers == 2){
 			sc->mousebutton = 1;
@@ -691,54 +716,6 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		input.mi.dy = 0;
 		input.mi.mouseData = 0;
 		MySendInput(pDevice, &input, sc);
-	}
-	else if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == true){
-		bool hasBottomButton = false;
-		int bottomx = -1;
-		int bottomy = -1;
-		for (int i = 0; i < afingers; i++){
-			if (CYAPA_TOUCH_Y(regs, i) >= 400){
-				hasBottomButton = true;
-				if (bottomx == -1 || bottomx >= 400){
-					bottomx = CYAPA_TOUCH_X(regs, i);
-					bottomy = CYAPA_TOUCH_Y(regs, i);
-				}
-			}
-		}
-
-		int newmousebutton = sc->mousebutton;
-
-		if (afingers == 0){
-			sc->mousebutton = 0;
-		}
-		else if (afingers == 1 || hasBottomButton){
-			if (!hasBottomButton){
-				newmousebutton = 0;
-			}
-			else if (bottomx < 400){
-				newmousebutton = 0;
-			}
-			else {
-				newmousebutton = 1;
-			}
-		}
-		else if (afingers == 2){
-			newmousebutton = 1;
-		}
-		else if (afingers == 3){
-			newmousebutton = 2;
-		}
-		else if (afingers == 4){
-			newmousebutton = 3;
-		}
-
-		if (newmousebutton != sc->mousebutton){
-			//input.mi.dx = 0;
-			//input.mi.dy = 0;
-			input.mi.mouseData = 0;
-			sc->mousebutton = newmousebutton;
-			MySendInput(pDevice, &input, sc);
-		}
 	}
 	if (afingers > 0){
 		if (!overrideDeltas){
@@ -770,5 +747,9 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		input.mi.dy = 0;
 		input.mi.mouseData = 0;
 		MySendInput(pDevice, &input, sc);
+	}
+	if (readOnly) {
+		sc->x = rox;
+		sc->y = roy;
 	}
 }
