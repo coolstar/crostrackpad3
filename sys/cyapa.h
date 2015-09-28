@@ -135,6 +135,8 @@ struct cyapa_softc {
 	uint32_t ignx;
 	uint32_t igny;
 
+	bool expect2finger;
+
 	bool mousedown;
 	int mousebutton;
 	int lastnfingers;

@@ -471,11 +471,15 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		sc->igny = 0;
 		sc->lastx[0] = sc->lastx[1] = 0;
 		sc->lasty[0] = sc->lasty[1] = 0;
+		sc->expect2finger = false;
 		sc->lastid = regs->touch->id;
 	}
 
 	bool overrideDeltas = false;
 	bool readOnly = false;
+
+	if (sc->expect2finger && afingers < 2)
+		overrideDeltas = true;
 
 	int rox = sc->x;
 	int roy = sc->y;
@@ -629,11 +633,13 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 	}
 	else if (afingers == 2){
 		if (abs(delta_x) > abs(delta_y)){
+			sc->expect2finger = true;
 			input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
 			input.mi.mouseData = -delta_x;
 			MySendInput(pDevice, &input, sc);
 		}
 		else if (abs(delta_y) > abs(delta_x)){
+			sc->expect2finger = true;
 			input.mi.dwFlags = MOUSEEVENTF_WHEEL;
 			input.mi.mouseData = delta_y;
 			MySendInput(pDevice, &input, sc);
@@ -641,6 +647,7 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 	}
 	else if (afingers == 3){
 		if (sc->hasmoved){
+			sc->expect2finger = true;
 			sc->multitaskingx += delta_x;
 			sc->multitaskingy += delta_y;
 			if (sc->multitaskinggesturetick > 5 && !sc->multitaskingdone){
@@ -704,12 +711,15 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 		}
 		else if (afingers == 2){
 			sc->mousebutton = 1;
+			sc->expect2finger = true;
 		}
 		else if (afingers == 3){
 			sc->mousebutton = 2;
+			sc->expect2finger = true;
 		}
 		else if (afingers == 4){
 			sc->mousebutton = 3;
+			sc->expect2finger = true;
 		}
 
 		input.mi.dx = 0;
