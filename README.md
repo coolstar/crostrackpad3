@@ -1,7 +1,7 @@
-# crostrackpad2
-Cypress Gen3 APA Trackpad Driver for Acer C720, HP Chromebook 14 and Dell Chromebook 11.
+# crostrackpad3
+Cypress Gen3 APA Trackpad Driver for Acer C720, HP Chromebook 14, Dell Chromebook 11 and Toshiba Chromebook 1.
 
-Tested on Acer C720. HP Chromebook 14 and Dell Chromebook 11 users, feel free to modify the settings and send in pull requests with the right settings for your chromebook.
+Tested and verified on Acer C720 chromebook.
 
 # Credits
 

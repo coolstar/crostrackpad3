@@ -5,7 +5,7 @@
 #include "hiddevice.h"
 #include "input.h"
 
-void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cyapa_regs *regs, int tickinc);
+void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, struct cyapa_regs *regs, int tickinc);
 void CyapaTimerFunc(_In_ WDFTIMER hTimer);
 
 //#include "driver.tmh"
@@ -339,6 +339,8 @@ BOOLEAN OnInterruptIsr(
 	if (!pDevice->ConnectInterrupt)
 		return true;
 
+	CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Interrupt!\n");
+
 	struct cyapa_regs regs;
 	SpbReadDataSynchronously(&pDevice->I2CContext, 0, &regs, sizeof(regs));
 	pDevice->lastregs = regs;
@@ -357,7 +359,7 @@ void CyapaTimerFunc(_In_ WDFTIMER hTimer){
 
 	struct cyapa_regs regs = pDevice->lastregs;
 
-	cyapa_softc sc = pDevice->sc;
+	csgesture_softc sc = pDevice->sc;
 	TrackpadRawInput(pDevice, &sc, &regs, 1);
 	pDevice->sc = sc;
 	return;
@@ -367,7 +369,7 @@ static int distancesq(int delta_x, int delta_y){
 	return (delta_x * delta_x) + (delta_y*delta_y);
 }
 
-static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
+void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	BYTE x, BYTE y, BYTE wheelPosition, BYTE wheelHPosition){
 	_CYAPA_RELATIVE_MOUSE_REPORT report;
 	report.ReportID = REPORTID_RELATIVE_MOUSE;
@@ -380,7 +382,7 @@ static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
+void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
 	_CYAPA_KEYBOARD_REPORT report;
 	report.ReportID = REPORTID_KEYBOARD;
 	report.ShiftKeyFlags = shiftKeys;
@@ -392,278 +394,88 @@ static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCod
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-void MySendInput(PDEVICE_CONTEXT pDevice, INPUT* pinput, cyapa_softc *softc){
-	INPUT input = *pinput;
-	BYTE button = 0, x = 0, y = 0, wheelPosition = 0, wheelHPosition = 0;
-	if (softc->mousedown){
-		if (softc->mousebutton == 0)
-			button = MOUSE_BUTTON_1;
-		else if (softc->mousebutton == 1)
-			button = MOUSE_BUTTON_2;
-		else if (softc->mousebutton == 2)
-			button = MOUSE_BUTTON_3;
-	}
+void ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+	if (abovethreshold == 1) {
+		int i = iToUse[0];
+		int delta_x = sc->x[i] - sc->lastx[i];
+		int delta_y = sc->y[i] - sc->lasty[i];
 
-	if (input.mi.dwFlags == MOUSEEVENTF_MOVE){
-		x = input.mi.dx;
-		y = input.mi.dy;
-		//wheelPosition = pDevice->wheelPosition;
+		if (abs(delta_x) > 75 || abs(delta_y) > 75) {
+			delta_x = 0;
+			delta_y = 0;
+		}
+
+		sc->dx = delta_x;
+		sc->dy = delta_y;
 	}
-	else if (input.mi.dwFlags == MOUSEEVENTF_WHEEL){
-		if (input.mi.mouseData > 5)
-			wheelPosition = 1;
-		else if (input.mi.mouseData < -5)
-			wheelPosition = -1;
-		//softc->scrollratelimit++;
-	}
-	else if (input.mi.dwFlags == MOUSEEVENTF_HWHEEL){
-		if (input.mi.mouseData > 5)
-			wheelHPosition = 1;
-		else if (input.mi.mouseData < -5)
-			wheelHPosition = -1;
-		//softc->scrollratelimit++;
-	}
-	/*if (softc->scrollratelimit > 1){
-		softc->scrollratelimit = 0;
-	}
-	if (softc->scrollratelimit > 0){
-		wheelPosition = 0;
-		wheelHPosition = 0;
-	}*/
-	update_relative_mouse(pDevice, button, x, y, wheelPosition, wheelHPosition);
 }
 
-void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cyapa_regs *regs, int tickinc){
-	int nfingers;
-	int afingers;	/* actual fingers after culling */
-	int i;
+void ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+	sc->scrollx = 0;
+	sc->scrolly = 0;
+	//CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "DBGPAD Threshold: %d\n", abovethreshold);
+	if (abovethreshold == 2) {
+		int i1 = iToUse[0];
+		int delta_x1 = sc->x[i1] - sc->lastx[i1];
+		int delta_y1 = sc->y[i1] - sc->lasty[i1];
 
-	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
-	afingers = nfingers;
+		int i2 = iToUse[1];
+		int delta_x2 = sc->x[i2] - sc->lastx[i2];
+		int delta_y2 = sc->y[i2] - sc->lasty[i2];
 
-	//	system("cls");
-#ifdef DEBUG
-	CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "stat %02x\tTracking ID: %d\tbuttons %c%c%c\tnfngrs=%d\n",
-		regs->stat,
-		regs->touch->id,
-		((regs->fngr & CYAPA_FNGR_LEFT) ? 'L' : '-'),
-		((regs->fngr & CYAPA_FNGR_MIDDLE) ? 'M' : '-'),
-		((regs->fngr & CYAPA_FNGR_RIGHT) ? 'R' : '-'),
-		nfingers
-		);
-#endif
-
-	for (i = 0; i < nfingers; ++i) {
-#ifdef DEBUG
-		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, " [x=%04d y=%04d p=%d]\n",
-			CYAPA_TOUCH_X(regs, i),
-			CYAPA_TOUCH_Y(regs, i),
-			CYAPA_TOUCH_P(regs, i));
-#endif
-		if (CYAPA_TOUCH_P(regs, i) < cyapa_minpressure)
-			--afingers;
-	}
-
-	if (regs->touch->id != sc->lastid){
-		sc->x = 0;
-		sc->y = 0;
-		sc->ignx = 0;
-		sc->igny = 0;
-		sc->lastx[0] = sc->lastx[1] = 0;
-		sc->lasty[0] = sc->lasty[1] = 0;
-		sc->expect2finger = false;
-		sc->lastid = regs->touch->id;
-	}
-
-	bool overrideDeltas = false;
-	bool readOnly = false;
-
-	if (sc->expect2finger && afingers < 2)
-		overrideDeltas = true;
-
-	int rox = sc->x;
-	int roy = sc->y;
-
-	int x = sc->x;
-	int y = sc->y;
-	if (afingers == 1) {
-		x = CYAPA_TOUCH_X(regs, 0);
-		y = CYAPA_TOUCH_Y(regs, 0);
-		int testign = distancesq(x - sc->ignx, y - sc->igny);
-		if (sc->ignx != 0 && testign < 10) {
-			sc->ignx = x;
-			sc->igny = y;
-			rox = 0;
-			roy = 0;
-			overrideDeltas = true;
-			readOnly = true;
+		if ((abs(delta_y1) + abs(delta_y2)) > (abs(delta_x1) + abs(delta_x2))) {
+			int avgy = (delta_y1 + delta_y2) / 2;
+			sc->scrolly = avgy;
 		}
-	}
-
-	if (afingers > 0){
-#ifdef DEBUG
-		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Tick inc.\n");
-#endif
-		sc->tick += tickinc;
-		x = CYAPA_TOUCH_X(regs, 0);
-		y = CYAPA_TOUCH_Y(regs, 0);
-		if (afingers > 1){
-			int x1 = CYAPA_TOUCH_X(regs, 0);
-			int y1 = CYAPA_TOUCH_Y(regs, 0);
-			int x2 = CYAPA_TOUCH_X(regs, 1);
-			int y2 = CYAPA_TOUCH_Y(regs, 1);
-
-			int d1 = distancesq(x1 - sc->lastx[0], y1 - sc->lasty[0]);
-			int d2 = distancesq(x1 - sc->lastx[1], y1 - sc->lasty[1]);
-
-			int ignt1 = distancesq(x1 - sc->ignx, y1 - sc->igny);
-			int ignt2 = distancesq(x2 - sc->ignx, y2 - sc->igny);
-
-			if (ignt2 < ignt1) {
-				x = x2;
-				y = y2;
-				sc->x = sc->lastx[1];
-				sc->y = sc->lasty[1];
-			} else if (d1 > d2){
-				x = x1;
-				y = y1;
-				sc->x = sc->lastx[0];
-				sc->y = sc->lasty[0];
-				sc->ignx = x2;
-				sc->igny = y2;
-			} else if (d2 > d1) {
-				x = x2;
-				y = y2;
-				sc->x = sc->lastx[1];
-				sc->y = sc->lasty[1];
-				sc->ignx = x1;
-				sc->igny = y1;
-			}
-#ifdef DEBUG
-			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "%d %d\t%d %d\t%d %d\n", x, y, x1, y1, x2, y2);
-#endif
+		else {
+			int avgx = (delta_x1 + delta_x2) / 2;
+			sc->scrollx = avgx;
 		}
-		if ((overrideDeltas != true) && (sc->x == 0 && sc->y == 0)){
-			sc->x = x;
-			sc->y = y;
-		}
-	}
-	else {
-		if (sc->tick < 10 && sc->tick != 0){
-			INPUT input;
-			if (sc->lastnfingers == 1){
-				sc->mousebutton = 0;
-			}
-			else if (sc->lastnfingers == 2){
-				sc->mousebutton = 1;
-			}
-			else if (sc->lastnfingers == 3){
-				sc->mousebutton = 2;
-			}
-			else if (sc->lastnfingers == 4){
-				sc->mousebutton = 3;
-			}
-			input.mi.dx = 0;
-			input.mi.dy = 0;
-			input.mi.mouseData = 0;
-			sc->mousedown = true;
-			MySendInput(pDevice, &input, sc);
-			sc->tickssincelastclick = 0;
-#ifdef DEBUG
-			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Tap to Click!\n");
-#endif
-		}
-		sc->tick = 0;
-		sc->hasmoved = false;
-		sc->mousedownfromtap = false;
-		sc->tickssincelastclick+=tickinc;
-#ifdef DEBUG
-		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Move Reset!\n");
-#endif
-	}
-	sc->lastx[0] = CYAPA_TOUCH_X(regs, 0);
-	sc->lasty[0] = CYAPA_TOUCH_Y(regs, 0);
-	sc->lastx[1] = CYAPA_TOUCH_X(regs, 1);
-	sc->lasty[1] = CYAPA_TOUCH_Y(regs, 1);
+		//CyapaPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"DBGPAD Scroll X: %d Y: %d\n", sc->scrollx, sc->scrolly);
+		if (abs(sc->scrollx) > 75)
+			sc->scrollx = 0;
+		if (abs(sc->scrolly) > 75)
+			sc->scrolly = 0;
+		if (sc->scrolly > 5)
+			sc->scrolly = 1;
+		else if (sc->scrolly < -5)
+			sc->scrolly = -1;
+		else
+			sc->scrolly = 0;
 
-	int delta_x = x - sc->x, delta_y = y - sc->y;
-	if (abs(delta_x) + abs(delta_y) > 10 && !sc->hasmoved){
-		sc->hasmoved = true;
-		if (sc->tickssincelastclick < 10 && sc->tickssincelastclick >= 0){
-			INPUT input;
-			input.mi.dx = 0;
-			input.mi.dy = 0;
-			input.mi.mouseData = 0;
-			MySendInput(pDevice, &input, sc);
-			sc->mousebutton = 0;
-			sc->mousedown = true;
-			sc->mousedownfromtap = true;
-			sc->tickssincelastclick = 0;
-#ifdef DEBUG
-			CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Move from tap!\n");
-#endif
-		}
-#ifdef DEBUG
-		CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "Has moved!\n");
-#endif
+		if (sc->scrollx > 5)
+			sc->scrollx = -1;
+		else if (sc->scrollx < -5)
+			sc->scrollx = 1;
+		else
+			sc->scrollx = 0;
 	}
-	if (overrideDeltas){
-		delta_x = 0;
-		delta_y = 0;
-	}
+}
 
-	sc->lastnfingers = nfingers;
+void ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+	if (abovethreshold == 3) {
+		int i1 = iToUse[0];
+		int delta_x1 = sc->x[i1] - sc->lastx[i1];
+		int delta_y1 = sc->y[i1] - sc->lasty[i1];
 
-	if (CYAPA_TOUCH_P(regs, 0) < 20)
-		sc->tick -= tickinc;
-	if (CYAPA_TOUCH_P(regs, 0) < 10)
-		sc->tick = 0;
-	else if (sc->hasmoved)
-		sc->tick = 0;
-	if (sc->tick < 0)
-		sc->tick = 0;
+		int i2 = iToUse[1];
+		int delta_x2 = sc->x[i2] - sc->lastx[i2];
+		int delta_y2 = sc->y[i2] - sc->lasty[i2];
 
-	INPUT input;
-	if (afingers < 2 || sc->mousedown){
-		input.mi.dx = (BYTE)delta_x;
-		input.mi.dy = (BYTE)delta_y;
-		input.mi.dwFlags = MOUSEEVENTF_MOVE;
-		if (delta_x != 0 && delta_y != 0)
-			MySendInput(pDevice, &input, sc);
-	}
-	else if (afingers == 2){
-		if (abs(delta_x) > abs(delta_y)){
-			sc->expect2finger = true;
-			input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
-			input.mi.mouseData = -delta_x;
-			MySendInput(pDevice, &input, sc);
-		}
-		else if (abs(delta_y) > abs(delta_x)){
-			sc->expect2finger = true;
-			input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-			input.mi.mouseData = delta_y;
-			MySendInput(pDevice, &input, sc);
-		}
-	}
-	else if (afingers == 3){
-		if (sc->hasmoved){
-			sc->expect2finger = true;
-			sc->multitaskingx += delta_x;
-			sc->multitaskingy += delta_y;
-			if (sc->multitaskinggesturetick > 5 && !sc->multitaskingdone){
-				if (abs(sc->multitaskingx) > abs(sc->multitaskingy)){
-					BYTE shiftKeys = KBD_LGUI_BIT | KBD_LCONTROL_BIT;
-					BYTE keyCodes[KBD_KEY_CODES] = { 0, 0, 0, 0, 0, 0 };
-					if (sc->multitaskingx > 0)
-						keyCodes[0] = 0x50;
-					else
-						keyCodes[0] = 0x4F;
-					update_keyboard(pDevice, shiftKeys, keyCodes);
-					shiftKeys = 0;
-					keyCodes[0] = 0x0;
-					update_keyboard(pDevice, shiftKeys, keyCodes);
-				}
-				else if (abs(sc->multitaskingy) > abs(sc->multitaskingx)){
+		int i3 = iToUse[2];
+		int delta_x3 = sc->x[i3] - sc->lastx[i3];
+		int delta_y3 = sc->y[i3] - sc->lasty[i3];
+
+		int avgx = (delta_x1 + delta_x2 + delta_x3) / 3;
+		int avgy = (delta_y1 + delta_y2 + delta_y3) / 3;
+
+		sc->multitaskingx += avgx;
+		sc->multitaskingy += avgy;
+		sc->multitaskinggesturetick++;
+
+		if (sc->multitaskinggesturetick > 5 && !sc->multitaskingdone) {
+			if ((abs(delta_y1) + abs(delta_y2) + abs(delta_y3)) > (abs(delta_x1) + abs(delta_x2) + abs(delta_x3))) {
+				if (abs(sc->multitaskingy) > 50) {
 					BYTE shiftKeys = KBD_LGUI_BIT;
 					BYTE keyCodes[KBD_KEY_CODES] = { 0, 0, 0, 0, 0, 0 };
 					if (sc->multitaskingy < 0)
@@ -674,92 +486,274 @@ void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct cyapa_softc *sc, struct cy
 					shiftKeys = 0;
 					keyCodes[0] = 0x0;
 					update_keyboard(pDevice, shiftKeys, keyCodes);
-				}
-				sc->multitaskingdone = true;
-				sc->multitaskinggesturetick = -1;
-			}
-			else if (sc->multitaskingdone){
-				if (sc->multitaskinggesturetick > 25){
-					sc->multitaskinggesturetick = -1;
 					sc->multitaskingx = 0;
 					sc->multitaskingy = 0;
-					sc->multitaskingdone = false;
+					sc->multitaskingdone = true;
 				}
 			}
-#ifdef DEBUG
-			CyapaPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"Multitasking Gestures!\n");
-#endif
-			sc->multitaskinggesturetick++;
+			else {
+				if (abs(sc->multitaskingx) > 50) {
+					BYTE shiftKeys = KBD_LGUI_BIT | KBD_LCONTROL_BIT;
+					BYTE keyCodes[KBD_KEY_CODES] = { 0, 0, 0, 0, 0, 0 };
+					if (sc->multitaskingx > 0)
+						keyCodes[0] = 0x50;
+					else
+						keyCodes[0] = 0x4F;
+					update_keyboard(pDevice, shiftKeys, keyCodes);
+					shiftKeys = 0;
+					keyCodes[0] = 0x0;
+					update_keyboard(pDevice, shiftKeys, keyCodes);
+					sc->multitaskingx = 0;
+					sc->multitaskingy = 0;
+					sc->multitaskingdone = true;
+				}
+			}
 		}
-	}
-
-	if (afingers != 3){
-		sc->multitaskinggesturetick = 0;
-		sc->multitaskingx = 0;
-		sc->multitaskingy = 0;
-		sc->multitaskingdone = false;
-	}
-
-	if ((regs->fngr & CYAPA_FNGR_LEFT) != 0 && sc->mousedown == false){
-		sc->mousedown = true;
-
-		if (afingers == 0){
-			sc->mousebutton = 0;
-		}
-		else if (afingers == 1){
-			sc->mousebutton = 0;
-		}
-		else if (afingers == 2){
-			sc->mousebutton = 1;
-			sc->expect2finger = true;
-		}
-		else if (afingers == 3){
-			sc->mousebutton = 2;
-			sc->expect2finger = true;
-		}
-		else if (afingers == 4){
-			sc->mousebutton = 3;
-			sc->expect2finger = true;
-		}
-
-		input.mi.dx = 0;
-		input.mi.dy = 0;
-		input.mi.mouseData = 0;
-		MySendInput(pDevice, &input, sc);
-	}
-	if (afingers > 0){
-		if (!overrideDeltas){
-			sc->x = x;
-			sc->y = y;
+		else if (sc->multitaskinggesturetick > 25) {
+			sc->multitaskingx = 0;
+			sc->multitaskingy = 0;
+			sc->multitaskinggesturetick = 0;
+			sc->multitaskingdone = false;
 		}
 	}
 	else {
-		if (!overrideDeltas){
-			sc->x = 0;
-			sc->y = 0;
+		sc->multitaskingx = 0;
+		sc->multitaskingy = 0;
+		sc->multitaskinggesturetick = 0;
+		sc->multitaskingdone = false;
+	}
+}
+
+void TapToClick(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int button) {
+	sc->tickssinceclick++;
+	if (sc->mousedown) {
+		sc->tickssinceclick = 0;
+		return;
+	}
+	if (button == 0)
+		return;
+	int buttonmask = 0;
+
+	switch (button) {
+	case 1:
+		buttonmask = MOUSE_BUTTON_1;
+		break;
+	case 2:
+		buttonmask = MOUSE_BUTTON_2;
+		break;
+	case 3:
+		buttonmask = MOUSE_BUTTON_3;
+		break;
+	}
+	if (buttonmask != 0 && sc->tickssinceclick > 10) {
+		update_relative_mouse(pDevice, buttonmask, 0, 0, 0, 0);
+		update_relative_mouse(pDevice, 0, 0, 0, 0, 0);
+		sc->tickssinceclick = 0;
+	}
+}
+
+void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
+#pragma mark reset inputs
+	sc->dx = 0;
+	sc->dy = 0;
+
+#pragma mark process touch thresholds
+	int avgx[15];
+	int avgy[15];
+
+	int abovethreshold = 0;
+	int recentlyadded = 0;
+	int iToUse[3] = { 0,0,0 };
+	int a = 0;
+
+
+	for (int i = 0;i < 15;i++) {
+		if (sc->truetick[i] < 30 && sc->truetick[i] != 0)
+			recentlyadded++;
+		if (sc->tick[i] == 0)
+			continue;
+		avgx[i] = sc->totalx[i] / sc->tick[i];
+		avgy[i] = sc->totaly[i] / sc->tick[i];
+		if (distancesq(avgx[i], avgy[i]) > 2) {
+			abovethreshold++;
+			iToUse[a] = i;
+			a++;
 		}
 	}
 
-	if ((regs->fngr & CYAPA_FNGR_LEFT) == 0 && sc->mousedown == true && sc->mousedownfromtap != true){
-		sc->mousedown = false;
+#pragma mark process different gestures
+	ProcessMove(sc, abovethreshold, iToUse);
+	ProcessScroll(sc, abovethreshold, iToUse);
+	ProcessThreeFingerSwipe(pDevice, sc, abovethreshold, iToUse);
 
-		if (sc->mousebutton == 3){
-			BYTE shiftKeys = KBD_LGUI_BIT;
-			BYTE keyCodes[KBD_KEY_CODES] = { 0x04, 0, 0, 0, 0, 0 };
-			update_keyboard(pDevice, shiftKeys, keyCodes);
-			shiftKeys = 0;
-			keyCodes[0] = 0x0;
-			update_keyboard(pDevice, shiftKeys, keyCodes);
+#pragma mark process clickpad press state
+	int buttonmask = 0;
 
+	sc->mousebutton = recentlyadded;
+	if (sc->mousebutton == 0)
+		sc->mousebutton = abovethreshold;
+	int nfingers = 0;
+	if (sc->mousebutton == 0) {
+		for (int i = 0;i < 15;i++) {
+			if (sc->x[i] != -1)
+				nfingers++;
 		}
-		sc->mousebutton = 0;
-		input.mi.dx = 0;
-		input.mi.dy = 0;
-		input.mi.mouseData = 0;
-		MySendInput(pDevice, &input, sc);
+		sc->mousebutton = nfingers;
+		if (sc->mousebutton == 0)
+			sc->mousebutton = 1;
 	}
-	if (readOnly) {
-		sc->x = rox;
-		sc->y = roy;
+	if (sc->mousebutton > 3)
+		sc->mousebutton = 3;
+
+	if (sc->mouseDownDueToTap) {
+		sc->mousedown = true;
+		sc->mousebutton = 1;
+		buttonmask = MOUSE_BUTTON_1;
+		sc->buttonmask = buttonmask;
+	} else {
+		if (sc->buttondown && !sc->mousedown) {
+			sc->mousedown = true;
+			sc->tickssinceclick = 0;
+
+			switch (sc->mousebutton) {
+			case 1:
+				buttonmask = MOUSE_BUTTON_1;
+				break;
+			case 2:
+				buttonmask = MOUSE_BUTTON_2;
+				break;
+			case 3:
+				buttonmask = MOUSE_BUTTON_3;
+				break;
+			}
+			sc->buttonmask = buttonmask;
+		}
+		else if (sc->mousedown && !sc->buttondown) {
+			sc->mousedown = false;
+			sc->mousebutton = 0;
+			sc->buttonmask = 0;
+		}
 	}
+
+#pragma mark shift to last
+	int releasedfingers = 0;
+
+	for (int i = 0;i < 15;i++) {
+		if (sc->x[i] != -1) {
+			/*if (sc->ticksincelastrelease < 25 && !sc->mouseDownDueToTap) {
+				sc->mouseDownDueToTap = true;
+				sc->idForMouseDown = i;
+			}*/
+			sc->truetick[i]++;
+			if (sc->tick[i] < 10) {
+				if (sc->lastx[i] != -1) {
+					sc->totalx[i] += abs(sc->x[i] - sc->lastx[i]);
+					sc->totaly[i] += abs(sc->y[i] - sc->lasty[i]);
+					sc->totalp[i] += sc->p[i];
+
+					sc->flextotalx[i] = sc->totalx[i];
+					sc->flextotaly[i] = sc->flextotaly[i];
+
+					int j = sc->tick[i];
+					sc->xhistory[i][j] = abs(sc->x[i] - sc->lastx[i]);
+					sc->yhistory[i][j] = abs(sc->y[i] - sc->lasty[i]);
+				}
+				sc->tick[i]++;
+			}
+			else if (sc->lastx[i] != -1) {
+				int absx = abs(sc->x[i] - sc->lastx[i]);
+				int absy = abs(sc->y[i] - sc->lasty[i]);
+
+				int newtotalx = sc->flextotalx[i] - sc->xhistory[i][0] + absx;
+				int newtotaly = sc->flextotaly[i] - sc->yhistory[i][0] + absy;
+
+				bool oldsatisfies = distancesq(avgx[i], avgy[i]) > 2;
+				bool newsatisfies = distancesq(newtotalx / 10, newtotaly / 10) > 2;
+
+				bool isvalid = true;
+				if (!oldsatisfies)
+					isvalid = true;
+				if (oldsatisfies && !newsatisfies)
+					isvalid = false;
+
+				if (isvalid) { //don't allow a threshold to drop. Only allow increasing.
+					sc->flextotalx[i] -= sc->xhistory[i][0];
+					sc->flextotaly[i] -= sc->yhistory[i][0];
+					for (int j = 1;j < 10;j++) {
+						sc->xhistory[i][j - 1] = sc->xhistory[i][j];
+						sc->yhistory[i][j - 1] = sc->yhistory[i][j];
+					}
+					sc->flextotalx[i] += abs(sc->x[i] - sc->lastx[i]);
+					sc->flextotaly[i] += abs(sc->y[i] - sc->lasty[i]);
+
+					int j = 9;
+					sc->xhistory[i][j] = abs(sc->x[i] - sc->lastx[i]);
+					sc->yhistory[i][j] = abs(sc->y[i] - sc->lasty[i]);
+				}
+			}
+		}
+		if (sc->x[i] == -1) {
+			if (i == sc->idForMouseDown) {
+				sc->mouseDownDueToTap = false;
+				sc->idForMouseDown = -1;
+			}
+			if (sc->lastx[i] != -1)
+				sc->ticksincelastrelease = -1;
+			for (int j = 0;j < 10;j++) {
+				sc->xhistory[i][j] = 0;
+				sc->yhistory[i][j] = 0;
+			}
+			if (sc->tick[i] < 10 && sc->tick[i] != 0) {
+				int avgp = sc->totalp[i] / sc->tick[i];
+				if (avgp > 7)
+					releasedfingers++;
+			}
+			sc->totalx[i] = 0;
+			sc->totaly[i] = 0;
+			sc->totalp[i] = 0;
+			sc->tick[i] = 0;
+			sc->truetick[i] = 0;
+		}
+		sc->lastx[i] = sc->x[i];
+		sc->lasty[i] = sc->y[i];
+		sc->lastp[i] = sc->p[i];
+	}
+	sc->ticksincelastrelease++;
+
+#pragma mark process tap to click
+	TapToClick(pDevice, sc, releasedfingers);
+
+#pragma mark send to system
+	update_relative_mouse(pDevice, sc->buttonmask, sc->dx, sc->dy, sc->scrolly, sc->scrollx);
+}
+
+void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, struct cyapa_regs *regs, int tickinc){
+	int nfingers;
+	int afingers;	/* actual fingers after culling */
+	int i;
+
+	if ((regs->stat & CYAPA_STAT_RUNNING) == 0) {
+		regs->fngr = 0;
+	}
+
+	nfingers = CYAPA_FNGR_NUMFINGERS(regs->fngr);
+
+	for (int i = 0;i < 15;i++) {
+		sc->x[i] = -1;
+		sc->y[i] = -1;
+		sc->p[i] = -1;
+	}
+	for (int i = 0;i < nfingers;i++) {
+		int a = regs->touch[i].id;
+		int x = CYAPA_TOUCH_X(regs, i);
+		int y = CYAPA_TOUCH_Y(regs, i);
+		int p = CYAPA_TOUCH_P(regs, i);
+		sc->x[a] = x;
+		sc->y[a] = y;
+		sc->p[a] = p;
+	}
+
+	sc->buttondown = (regs->fngr & CYAPA_FNGR_LEFT);
+
+	ProcessGesture(pDevice, sc);
 }

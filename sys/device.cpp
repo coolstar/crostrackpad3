@@ -179,20 +179,19 @@ NTSTATUS BOOTTRACKPAD(
 	_In_  PDEVICE_CONTEXT  pDevice
 	)
 {
-	if (deviceLoaded)
-		return 0;
-
 	NTSTATUS status = 0;
 
 	static char bl_exit[] = {
 		0x00, 0xff, 0xa5, 0x00, 0x01,
 		0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
-	FuncEntry(TRACE_FLAG_WDFLOADING);
-	SpbWriteDataSynchronously(&pDevice->I2CContext, 0x00, bl_exit, sizeof(bl_exit));
-	FuncExit(TRACE_FLAG_WDFLOADING);
+	cyapa_boot_regs boot;
 
-	deviceLoaded = true;
+	FuncEntry(TRACE_FLAG_WDFLOADING);
+	SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &boot, sizeof(boot));
+	if ((boot.stat & CYAPA_STAT_RUNNING) == 0)
+		SpbWriteDataSynchronously(&pDevice->I2CContext, 0x00, bl_exit, sizeof(bl_exit));
+	FuncExit(TRACE_FLAG_WDFLOADING);
 	return status;
 }
 

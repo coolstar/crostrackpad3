@@ -246,7 +246,11 @@ IN ULONG        IoControlCode
 #define DBG_IOCTL 4
 
 #if 0
-#define CyapaPrintPrint(dbglevel, dbgcatagory, fmt, ...) {          \
+
+static ULONG CyapaPrintDebugLevel = 100;
+static ULONG CyapaPrintDebugCatagories = DBG_INIT || DBG_PNP || DBG_IOCTL;
+
+#define CyapaPrint(dbglevel, dbgcatagory, fmt, ...) {          \
     if (CyapaPrintDebugLevel >= dbglevel &&                         \
         (CyapaPrintDebugCatagories && dbgcatagory))                 \
 	    {                                                           \

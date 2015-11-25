@@ -128,9 +128,11 @@ __packed(struct cyapa_cap{
 struct cyapa_softc {
 	uint32_t x;
 	uint32_t y;
+	uint32_t p;
 
 	uint32_t lastx[2];
 	uint32_t lasty[2];
+	uint32_t lastp[2];
 
 	uint32_t ignx;
 	uint32_t igny;

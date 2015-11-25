@@ -26,6 +26,7 @@
 #include "trace.h"
 
 #include "cyapa.h"
+#include "gesturerec.h"
 
 //
 // Forward Declarations
@@ -89,7 +90,7 @@ struct _DEVICE_CONTEXT
 
 	ULONGLONG LastInterruptTime;
 
-	cyapa_softc sc;
+	csgesture_softc sc;
 
 	cyapa_regs lastregs;
 };
