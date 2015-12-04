@@ -2,7 +2,7 @@
 #include "driver.h"
 #include "device.h"
 #include "ntstrsafe.h"
-#include "hiddevice.h"
+#include "hiddevice.h"	
 #include "input.h"
 
 void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, struct cyapa_regs *regs, int tickinc);
@@ -369,7 +369,7 @@ static int distancesq(int delta_x, int delta_y){
 	return (delta_x * delta_x) + (delta_y*delta_y);
 }
 
-void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
+static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	BYTE x, BYTE y, BYTE wheelPosition, BYTE wheelHPosition){
 	_CYAPA_RELATIVE_MOUSE_REPORT report;
 	report.ReportID = REPORTID_RELATIVE_MOUSE;
@@ -382,7 +382,7 @@ void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
+static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCodes[KBD_KEY_CODES]){
 	_CYAPA_KEYBOARD_REPORT report;
 	report.ReportID = REPORTID_KEYBOARD;
 	report.ShiftKeyFlags = shiftKeys;
@@ -566,6 +566,11 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	int iToUse[3] = { 0,0,0 };
 	int a = 0;
 
+	int nfingers = 0;
+	for (int i = 0;i < 15;i++) {
+		if (sc->x[i] != -1)
+			nfingers++;
+	}
 
 	for (int i = 0;i < 15;i++) {
 		if (sc->truetick[i] < 30 && sc->truetick[i] != 0)
@@ -579,6 +584,11 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			iToUse[a] = i;
 			a++;
 		}
+		/*else if (nfingers == 1 && sc->x[i] != -1 && sc->truetick[i] > 50) {
+			abovethreshold = 1;
+			iToUse[a] = i;
+			a++;
+		}*/
 	}
 
 #pragma mark process different gestures
@@ -592,12 +602,8 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	sc->mousebutton = recentlyadded;
 	if (sc->mousebutton == 0)
 		sc->mousebutton = abovethreshold;
-	int nfingers = 0;
+
 	if (sc->mousebutton == 0) {
-		for (int i = 0;i < 15;i++) {
-			if (sc->x[i] != -1)
-				nfingers++;
-		}
 		sc->mousebutton = nfingers;
 		if (sc->mousebutton == 0)
 			sc->mousebutton = 1;
