@@ -8,6 +8,8 @@
 void TrackpadRawInput(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, struct cyapa_regs *regs, int tickinc);
 void CyapaTimerFunc(_In_ WDFTIMER hTimer);
 
+#define MAX_FINGERS 15
+
 //#include "driver.tmh"
 
 NTSTATUS
@@ -558,8 +560,8 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	sc->dy = 0;
 
 #pragma mark process touch thresholds
-	int avgx[15];
-	int avgy[15];
+	int avgx[MAX_FINGERS];
+	int avgy[MAX_FINGERS];
 
 	int abovethreshold = 0;
 	int recentlyadded = 0;
@@ -567,12 +569,12 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	int a = 0;
 
 	int nfingers = 0;
-	for (int i = 0;i < 15;i++) {
+	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->x[i] != -1)
 			nfingers++;
 	}
 
-	for (int i = 0;i < 15;i++) {
+	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->truetick[i] < 30 && sc->truetick[i] != 0)
 			recentlyadded++;
 		if (sc->tick[i] == 0)
@@ -585,9 +587,9 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			a++;
 		}
 		/*else if (nfingers == 1 && sc->x[i] != -1 && sc->truetick[i] > 50) {
-			abovethreshold = 1;
-			iToUse[a] = i;
-			a++;
+		abovethreshold = 1;
+		iToUse[a] = i;
+		a++;
 		}*/
 	}
 
@@ -616,7 +618,8 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 		sc->mousebutton = 1;
 		buttonmask = MOUSE_BUTTON_1;
 		sc->buttonmask = buttonmask;
-	} else {
+	}
+	else {
 		if (sc->buttondown && !sc->mousedown) {
 			sc->mousedown = true;
 			sc->tickssinceclick = 0;
@@ -644,11 +647,11 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 #pragma mark shift to last
 	int releasedfingers = 0;
 
-	for (int i = 0;i < 15;i++) {
+	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->x[i] != -1) {
 			/*if (sc->ticksincelastrelease < 25 && !sc->mouseDownDueToTap) {
-				sc->mouseDownDueToTap = true;
-				sc->idForMouseDown = i;
+			sc->mouseDownDueToTap = true;
+			sc->idForMouseDown = i;
 			}*/
 			sc->truetick[i]++;
 			if (sc->tick[i] < 10) {
