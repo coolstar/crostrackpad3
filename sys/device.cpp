@@ -188,9 +188,12 @@ NTSTATUS BOOTTRACKPAD(
 	cyapa_boot_regs boot;
 
 	FuncEntry(TRACE_FLAG_WDFLOADING);
+
 	SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &boot, sizeof(boot));
+
 	if ((boot.stat & CYAPA_STAT_RUNNING) == 0)
-		SpbWriteDataSynchronously(&pDevice->I2CContext, 0x00, bl_exit, sizeof(bl_exit));
+		SpbWriteDataSynchronously(&pDevice->I2CContext, 0x00, bl_exit, sizeof(bl_exit)); 
+
 	FuncExit(TRACE_FLAG_WDFLOADING);
 	return status;
 }

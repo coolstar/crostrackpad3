@@ -574,6 +574,18 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			nfingers++;
 	}
 
+	int lastfinger = 0;
+	for (int i = 0;i < MAX_FINGERS;i++) {
+		if (sc->truetick[i] == 0)
+			continue;
+		if (sc->x[lastfinger] == -1) {
+			lastfinger = i;
+			continue;
+		}
+		if (sc->truetick[i] <= sc->truetick[lastfinger])
+			lastfinger = i;
+	}
+
 	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->truetick[i] < 30 && sc->truetick[i] != 0)
 			recentlyadded++;
@@ -581,16 +593,14 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			continue;
 		avgx[i] = sc->totalx[i] / sc->tick[i];
 		avgy[i] = sc->totaly[i] / sc->tick[i];
-		if (distancesq(avgx[i], avgy[i]) > 2) {
+		bool useLastFinger = false;
+		if (i == lastfinger && sc->truetick[lastfinger] > 30)
+			useLastFinger = true;
+		if (useLastFinger || distancesq(avgx[i], avgy[i]) > 2) {
 			abovethreshold++;
 			iToUse[a] = i;
 			a++;
 		}
-		/*else if (nfingers == 1 && sc->x[i] != -1 && sc->truetick[i] > 50) {
-		abovethreshold = 1;
-		iToUse[a] = i;
-		a++;
-		}*/
 	}
 
 #pragma mark process different gestures
