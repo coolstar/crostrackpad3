@@ -175,6 +175,21 @@ bool IsCyapaLoaded(){
 	return deviceLoaded;
 }
 
+void cyapa_set_power_mode(_In_  PDEVICE_CONTEXT  pDevice, _In_ uint8_t power_mode)
+{
+	int ret;
+	uint8_t power;
+
+	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_POWER_MODE, &ret, 1);
+	if (ret < 0)
+		return;
+
+	power = (ret & ~0xFC);
+	power |= power_mode & 0xFc;
+
+	SpbWriteDataSynchronously(&pDevice->I2CContext, CMD_POWER_MODE, &power, 1);
+}
+
 NTSTATUS BOOTTRACKPAD(
 	_In_  PDEVICE_CONTEXT  pDevice
 	)
@@ -185,14 +200,50 @@ NTSTATUS BOOTTRACKPAD(
 		0x00, 0xff, 0xa5, 0x00, 0x01,
 		0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
+	static char bl_deactivate[] = {
+		0x00, 0xff, 0x3b, 0x00, 0x01,
+		0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+
 	cyapa_boot_regs boot;
 
 	FuncEntry(TRACE_FLAG_WDFLOADING);
 
-	SpbReadDataSynchronously(&pDevice->I2CContext, 0x00, &boot, sizeof(boot));
+	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, &boot, sizeof(boot));
 
-	if ((boot.stat & CYAPA_STAT_RUNNING) == 0)
-		SpbWriteDataSynchronously(&pDevice->I2CContext, 0x00, bl_exit, sizeof(bl_exit)); 
+	if ((boot.stat & CYAPA_STAT_RUNNING) == 0) {
+		if (boot.error & CYAPA_ERROR_BOOTLOADER)
+			SpbWriteDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, bl_deactivate, sizeof(bl_deactivate));
+		else
+			SpbWriteDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, bl_exit, sizeof(bl_exit));
+	}
+
+	struct cyapa_cap cap;
+	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_QUERY_CAPABILITIES, &cap, sizeof(cap));
+	if (strncmp((const char *)cap.prod_ida, "CYTRA", 5) != 0) {
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "[cyapainit] Product ID \"%5.5s\" mismatch\n",
+			cap.prod_ida);
+	}
+
+	csgesture_softc *sc = &pDevice->sc;
+	sc->resx = ((cap.max_abs_xy_high << 4) & 0x0F00) |
+		cap.max_abs_x_low;
+	sc->resy = ((cap.max_abs_xy_high << 8) & 0x0F00) |
+		cap.max_abs_y_low;
+	sc->phyx = ((cap.phy_siz_xy_high << 4) & 0x0F00) |
+		cap.phy_siz_x_low;
+	sc->phyy = ((cap.phy_siz_xy_high << 8) & 0x0F00) |
+		cap.phy_siz_y_low;
+	CyapaPrint(DEBUG_LEVEL_INFO, DBG_PNP, "[cyapainit] %5.5s-%6.6s-%2.2s buttons=%c%c%c res=%dx%d\n",
+		cap.prod_ida, cap.prod_idb, cap.prod_idc,
+		((cap.buttons & CYAPA_FNGR_LEFT) ? 'L' : '-'),
+		((cap.buttons & CYAPA_FNGR_MIDDLE) ? 'M' : '-'),
+		((cap.buttons & CYAPA_FNGR_RIGHT) ? 'R' : '-'),
+		sc->resx,
+		sc->resy);
+
+	cyapa_set_power_mode(pDevice, CMD_POWER_MODE_FULL);
+
+	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, &boot, sizeof(boot));
 
 	FuncExit(TRACE_FLAG_WDFLOADING);
 	return status;

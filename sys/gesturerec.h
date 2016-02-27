@@ -8,6 +8,12 @@ struct csgesture_softc {
 
 	bool buttondown;
 
+	//hardware info
+	int resx;
+	int resy;
+	int phyx;
+	int phyy;
+
 	//system output
 	int dx;
 	int dy;

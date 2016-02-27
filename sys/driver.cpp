@@ -364,6 +364,7 @@ void CyapaTimerFunc(_In_ WDFTIMER hTimer){
 	csgesture_softc sc = pDevice->sc;
 	TrackpadRawInput(pDevice, &sc, &regs, 1);
 	pDevice->sc = sc;
+	pDevice->RegsSet = false;
 	return;
 }
 
@@ -659,9 +660,11 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 
 	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->x[i] != -1) {
-			/*if (sc->ticksincelastrelease < 25 && !sc->mouseDownDueToTap) {
-			sc->mouseDownDueToTap = true;
-			sc->idForMouseDown = i;
+			/*if (sc->lastx[i] == -1) {
+				if (sc->ticksincelastrelease < 25 && !sc->mouseDownDueToTap) {
+					sc->mouseDownDueToTap = true;
+					sc->idForMouseDown = i;
+				}
 			}*/
 			sc->truetick[i]++;
 			if (sc->tick[i] < 10) {
