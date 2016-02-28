@@ -364,13 +364,14 @@ void CyapaTimerFunc(_In_ WDFTIMER hTimer){
 	csgesture_softc sc = pDevice->sc;
 	TrackpadRawInput(pDevice, &sc, &regs, 1);
 	pDevice->sc = sc;
-	pDevice->RegsSet = false;
 	return;
 }
 
 static int distancesq(int delta_x, int delta_y){
 	return (delta_x * delta_x) + (delta_y*delta_y);
 }
+
+_CYAPA_RELATIVE_MOUSE_REPORT lastreport;
 
 static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	BYTE x, BYTE y, BYTE wheelPosition, BYTE wheelHPosition){
@@ -381,6 +382,14 @@ static void update_relative_mouse(PDEVICE_CONTEXT pDevice, BYTE button,
 	report.YValue = y;
 	report.WheelPosition = wheelPosition;
 	report.HWheelPosition = wheelHPosition;
+	if (report.Button == lastreport.Button &&
+		report.XValue == lastreport.XValue &&
+		report.YValue == lastreport.YValue &&
+		report.WheelPosition == lastreport.WheelPosition &&
+		report.HWheelPosition == lastreport.HWheelPosition)
+		return;
+	lastreport = report;
+
 	size_t bytesWritten;
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
