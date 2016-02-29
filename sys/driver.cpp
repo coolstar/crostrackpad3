@@ -444,19 +444,31 @@ void ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 			sc->scrollx = avgx;
 		}
 		//CyapaPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"DBGPAD Scroll X: %d Y: %d\n", sc->scrollx, sc->scrolly);
-		if (abs(sc->scrollx) > 75)
+		if (abs(sc->scrollx) > 100)
 			sc->scrollx = 0;
-		if (abs(sc->scrolly) > 75)
+		if (abs(sc->scrolly) > 100)
 			sc->scrolly = 0;
-		if (sc->scrolly > 5)
+		if (sc->scrolly > 8)
+			sc->scrolly = sc->scrolly / 8;
+		else if (sc->scrolly > 5)
 			sc->scrolly = 1;
+		else if (sc->scrolly < -8)
+			sc->scrolly = sc->scrolly / 8;
 		else if (sc->scrolly < -5)
 			sc->scrolly = -1;
 		else
 			sc->scrolly = 0;
 
-		if (sc->scrollx > 5)
+		if (sc->scrollx > 8) {
+			sc->scrollx = sc->scrollx / 8;
+			sc->scrollx = -sc->scrollx;
+		}
+		else if (sc->scrollx > 5)
 			sc->scrollx = -1;
+		else if (sc->scrollx < -8) {
+			sc->scrollx = sc->scrollx / 8;
+			sc->scrollx = -sc->scrollx;
+		}
 		else if (sc->scrollx < -5)
 			sc->scrollx = 1;
 		else
