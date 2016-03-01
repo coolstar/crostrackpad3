@@ -548,8 +548,17 @@ void ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int a
 	}
 }
 
-void TapToClick(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int button) {
+void TapToClickOrDrag(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int button) {
 	sc->tickssinceclick++;
+	if (sc->mouseDownDueToTap && sc->idForMouseDown == -1) {
+		if (sc->tickssinceclick > 10) {
+			sc->mouseDownDueToTap = false;
+			sc->mousedown = false;
+			sc->buttonmask = 0;
+			//Tap Drag Timed out
+		}
+		return;
+	}
 	if (sc->mousedown) {
 		sc->tickssinceclick = 0;
 		return;
@@ -569,10 +578,28 @@ void TapToClick(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int button) {
 		buttonmask = MOUSE_BUTTON_3;
 		break;
 	}
-	if (buttonmask != 0 && sc->tickssinceclick > 10) {
-		update_relative_mouse(pDevice, buttonmask, 0, 0, 0, 0);
-		update_relative_mouse(pDevice, 0, 0, 0, 0, 0);
+	if (buttonmask != 0 && sc->tickssinceclick > 10 && sc->ticksincelastrelease == 0) {
+		sc->idForMouseDown = -1;
+		sc->mouseDownDueToTap = true;
+		sc->buttonmask = buttonmask;
+		sc->mousebutton = button;
+		sc->mousedown = true;
 		sc->tickssinceclick = 0;
+	}
+}
+
+void ClearTapDrag(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int i) {
+	if (i == sc->idForMouseDown && sc->mouseDownDueToTap == true) {
+		if (sc->tick[i] < 10) {
+			//Double Tap
+			update_relative_mouse(pDevice, 0, 0, 0, 0, 0);
+			update_relative_mouse(pDevice, sc->buttonmask, 0, 0, 0, 0);
+		}
+		sc->mouseDownDueToTap = false;
+		sc->mousedown = false;
+		sc->buttonmask = 0;
+		sc->idForMouseDown = -1;
+		//Clear Tap Drag
 	}
 }
 
@@ -645,13 +672,7 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	if (sc->mousebutton > 3)
 		sc->mousebutton = 3;
 
-	if (sc->mouseDownDueToTap) {
-		sc->mousedown = true;
-		sc->mousebutton = 1;
-		buttonmask = MOUSE_BUTTON_1;
-		sc->buttonmask = buttonmask;
-	}
-	else {
+	if (!sc->mouseDownDueToTap) {
 		if (sc->buttondown && !sc->mousedown) {
 			sc->mousedown = true;
 			sc->tickssinceclick = 0;
@@ -681,12 +702,11 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 
 	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->x[i] != -1) {
-			/*if (sc->lastx[i] == -1) {
-				if (sc->ticksincelastrelease < 25 && !sc->mouseDownDueToTap) {
-					sc->mouseDownDueToTap = true;
-					sc->idForMouseDown = i;
+			if (sc->lastx[i] == -1) {
+				if (sc->ticksincelastrelease < 10 && sc->mouseDownDueToTap && sc->idForMouseDown == -1) {
+					sc->idForMouseDown = i; //Associate Tap Drag
 				}
-			}*/
+			}
 			sc->truetick[i]++;
 			if (sc->tick[i] < 10) {
 				if (sc->lastx[i] != -1) {
@@ -736,10 +756,7 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			}
 		}
 		if (sc->x[i] == -1) {
-			if (i == sc->idForMouseDown) {
-				sc->mouseDownDueToTap = false;
-				sc->idForMouseDown = -1;
-			}
+			ClearTapDrag(pDevice, sc, i);
 			if (sc->lastx[i] != -1)
 				sc->ticksincelastrelease = -1;
 			for (int j = 0;j < 10;j++) {
@@ -764,7 +781,7 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	sc->ticksincelastrelease++;
 
 #pragma mark process tap to click
-	TapToClick(pDevice, sc, releasedfingers);
+	TapToClickOrDrag(pDevice, sc, releasedfingers);
 
 #pragma mark send to system
 	update_relative_mouse(pDevice, sc->buttonmask, sc->dx, sc->dy, sc->scrolly, sc->scrollx);
