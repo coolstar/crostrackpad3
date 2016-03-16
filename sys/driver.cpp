@@ -406,9 +406,15 @@ static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCod
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-void ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
-	if (abovethreshold == 1) {
+bool ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+	if (abovethreshold == 1 || sc->panningActive) {
 		int i = iToUse[0];
+		if (!sc->panningActive && sc->tick[i] < 5)
+			return false;
+
+		if (sc->panningActive && i == -1)
+			i = sc->idForPanning;
+
 		int delta_x = sc->x[i] - sc->lastx[i];
 		int delta_y = sc->y[i] - sc->lasty[i];
 
@@ -417,21 +423,52 @@ void ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 			delta_y = 0;
 		}
 
+		for (int j = 0;j < MAX_FINGERS;j++) {
+			if (j != i) {
+				if (sc->blacklistedids[j] != 1) {
+					if (sc->y[j] > sc->y[i]) {
+						if (sc->truetick[j] > sc->truetick[i] + 15) {
+							sc->blacklistedids[j] = 1;
+						}
+					}
+				}
+			}
+		}
+
 		sc->dx = delta_x;
 		sc->dy = delta_y;
+
+		sc->panningActive = true;
+		sc->idForPanning = i;
+		return true;
 	}
+	return false;
 }
 
-void ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+bool ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 	sc->scrollx = 0;
 	sc->scrolly = 0;
-	//CyapaPrint(DEBUG_LEVEL_INFO, DBG_IOCTL, "DBGPAD Threshold: %d\n", abovethreshold);
-	if (abovethreshold == 2) {
+	if (abovethreshold == 2 || sc->scrollingActive) {
 		int i1 = iToUse[0];
+		int i2 = iToUse[1];
+		if (sc->scrollingActive){
+			if (i1 == -1) {
+				if (i2 != sc->idsForScrolling[0])
+					i1 = sc->idsForScrolling[0];
+				else
+					i1 = sc->idsForScrolling[1];
+			}
+			if (i2 == -1) {
+				if (i1 != sc->idsForScrolling[0])
+					i2 = sc->idsForScrolling[0];
+				else
+					i2 = sc->idsForScrolling[1];
+			}
+		}
+
 		int delta_x1 = sc->x[i1] - sc->lastx[i1];
 		int delta_y1 = sc->y[i1] - sc->lasty[i1];
 
-		int i2 = iToUse[1];
 		int delta_x2 = sc->x[i2] - sc->lastx[i2];
 		int delta_y2 = sc->y[i2] - sc->lasty[i2];
 
@@ -443,7 +480,6 @@ void ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 			int avgx = (delta_x1 + delta_x2) / 2;
 			sc->scrollx = avgx;
 		}
-		//CyapaPrint(DEBUG_LEVEL_INFO,DBG_IOCTL,"DBGPAD Scroll X: %d Y: %d\n", sc->scrollx, sc->scrolly);
 		if (abs(sc->scrollx) > 100)
 			sc->scrollx = 0;
 		if (abs(sc->scrolly) > 100)
@@ -473,11 +509,40 @@ void ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 			sc->scrollx = 1;
 		else
 			sc->scrollx = 0;
+
+		int fngrcount = 0;
+		int totfingers = 0;
+		for (int i = 0; i < MAX_FINGERS; i++) {
+			if (sc->x[i] != -1) {
+				totfingers++;
+				if (i == i1 || i == i2)
+					fngrcount++;
+			}
+		}
+
+		if (fngrcount == 2)
+			sc->ticksSinceScrolling = 0;
+		else
+			sc->ticksSinceScrolling++;
+		if (fngrcount == 2 || sc->ticksSinceScrolling <= 5) {
+			sc->scrollingActive = true;
+			if (abovethreshold == 2){
+				sc->idsForScrolling[0] = iToUse[0];
+				sc->idsForScrolling[1] = iToUse[1];
+			}
+		}
+		else {
+			sc->scrollingActive = false;
+			sc->idsForScrolling[0] = -1;
+			sc->idsForScrolling[1] = -1;
+		}
+		return true;
 	}
+	return false;
 }
 
-void ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
-	if (abovethreshold == 3) {
+bool ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+	if (abovethreshold == 3 || abovethreshold == 4) {
 		int i1 = iToUse[0];
 		int delta_x1 = sc->x[i1] - sc->lastx[i1];
 		int delta_y1 = sc->y[i1] - sc->lasty[i1];
@@ -539,12 +604,14 @@ void ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int a
 			sc->multitaskinggesturetick = 0;
 			sc->multitaskingdone = false;
 		}
+		return true;
 	}
 	else {
 		sc->multitaskingx = 0;
 		sc->multitaskingy = 0;
 		sc->multitaskinggesturetick = 0;
 		sc->multitaskingdone = false;
+		return false;
 	}
 }
 
@@ -614,7 +681,7 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 
 	int abovethreshold = 0;
 	int recentlyadded = 0;
-	int iToUse[3] = { 0,0,0 };
+	int iToUse[3] = { -1,-1,-1 };
 	int a = 0;
 
 	int nfingers = 0;
@@ -623,29 +690,16 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			nfingers++;
 	}
 
-	int lastfinger = 0;
-	for (int i = 0;i < MAX_FINGERS;i++) {
-		if (sc->truetick[i] == 0)
-			continue;
-		if (sc->x[lastfinger] == -1) {
-			lastfinger = i;
-			continue;
-		}
-		if (sc->truetick[i] <= sc->truetick[lastfinger])
-			lastfinger = i;
-	}
-
 	for (int i = 0;i < MAX_FINGERS;i++) {
 		if (sc->truetick[i] < 30 && sc->truetick[i] != 0)
 			recentlyadded++;
 		if (sc->tick[i] == 0)
 			continue;
-		avgx[i] = sc->totalx[i] / sc->tick[i];
-		avgy[i] = sc->totaly[i] / sc->tick[i];
-		bool useLastFinger = false;
-		if (i == lastfinger && sc->truetick[lastfinger] > 30)
-			useLastFinger = true;
-		if (useLastFinger || distancesq(avgx[i], avgy[i]) > 2) {
+		if (sc->blacklistedids[i] == 1)
+			continue;
+		avgx[i] = sc->flextotalx[i] / sc->tick[i];
+		avgy[i] = sc->flextotaly[i] / sc->tick[i];
+		if (distancesq(avgx[i], avgy[i]) > 2) {
 			abovethreshold++;
 			iToUse[a] = i;
 			a++;
@@ -653,9 +707,13 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	}
 
 #pragma mark process different gestures
-	ProcessMove(sc, abovethreshold, iToUse);
-	ProcessScroll(sc, abovethreshold, iToUse);
-	ProcessThreeFingerSwipe(pDevice, sc, abovethreshold, iToUse);
+	bool handled = false;
+	if (!handled)
+		handled = ProcessThreeFingerSwipe(pDevice, sc, abovethreshold, iToUse);
+	if (!handled)
+		handled = ProcessScroll(sc, abovethreshold, iToUse);
+	if (!handled)
+		handled = ProcessMove(sc, abovethreshold, iToUse);
 
 #pragma mark process clickpad press state
 	int buttonmask = 0;
@@ -665,7 +723,10 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 		sc->mousebutton = abovethreshold;
 
 	if (sc->mousebutton == 0) {
-		sc->mousebutton = nfingers;
+		if (sc->panningActive)
+			sc->mousebutton = 1;
+		else
+			sc->mousebutton = nfingers;
 		if (sc->mousebutton == 0)
 			sc->mousebutton = 1;
 	}
@@ -715,7 +776,7 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 					sc->totalp[i] += sc->p[i];
 
 					sc->flextotalx[i] = sc->totalx[i];
-					sc->flextotaly[i] = sc->flextotaly[i];
+					sc->flextotaly[i] = sc->totaly[i];
 
 					int j = sc->tick[i];
 					sc->xhistory[i][j] = abs(sc->x[i] - sc->lastx[i]);
@@ -730,29 +791,21 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 				int newtotalx = sc->flextotalx[i] - sc->xhistory[i][0] + absx;
 				int newtotaly = sc->flextotaly[i] - sc->yhistory[i][0] + absy;
 
-				bool oldsatisfies = distancesq(avgx[i], avgy[i]) > 2;
-				bool newsatisfies = distancesq(newtotalx / 10, newtotaly / 10) > 2;
+				sc->totalx[i] += absx;
+				sc->totaly[i] += absy;
 
-				bool isvalid = true;
-				if (!oldsatisfies)
-					isvalid = true;
-				if (oldsatisfies && !newsatisfies)
-					isvalid = false;
-
-				if (isvalid) { //don't allow a threshold to drop. Only allow increasing.
-					sc->flextotalx[i] -= sc->xhistory[i][0];
-					sc->flextotaly[i] -= sc->yhistory[i][0];
-					for (int j = 1;j < 10;j++) {
-						sc->xhistory[i][j - 1] = sc->xhistory[i][j];
-						sc->yhistory[i][j - 1] = sc->yhistory[i][j];
-					}
-					sc->flextotalx[i] += abs(sc->x[i] - sc->lastx[i]);
-					sc->flextotaly[i] += abs(sc->y[i] - sc->lasty[i]);
-
-					int j = 9;
-					sc->xhistory[i][j] = abs(sc->x[i] - sc->lastx[i]);
-					sc->yhistory[i][j] = abs(sc->y[i] - sc->lasty[i]);
+				sc->flextotalx[i] -= sc->xhistory[i][0];
+				sc->flextotaly[i] -= sc->yhistory[i][0];
+				for (int j = 1;j < 10;j++) {
+					sc->xhistory[i][j - 1] = sc->xhistory[i][j];
+					sc->yhistory[i][j - 1] = sc->yhistory[i][j];
 				}
+				sc->flextotalx[i] += absx;
+				sc->flextotaly[i] += absy;
+
+				int j = 9;
+				sc->xhistory[i][j] = absx;
+				sc->yhistory[i][j] = absy;
 			}
 		}
 		if (sc->x[i] == -1) {
@@ -773,6 +826,13 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 			sc->totalp[i] = 0;
 			sc->tick[i] = 0;
 			sc->truetick[i] = 0;
+
+			sc->blacklistedids[i] = 0;
+
+			if (sc->idForPanning == i) {
+				sc->panningActive = false;
+				sc->idForPanning = -1;
+			}
 		}
 		sc->lastx[i] = sc->x[i];
 		sc->lasty[i] = sc->y[i];
