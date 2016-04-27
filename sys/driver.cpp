@@ -823,7 +823,9 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 				sc->yhistory[i][j] = 0;
 			}
 			if (sc->tick[i] < 10 && sc->tick[i] != 0) {
-				releasedfingers++;
+				int avgp = sc->totalp[i] / sc->tick[i];
+				if (avgp > 7)
+					releasedfingers++;
 			}
 			sc->totalx[i] = 0;
 			sc->totaly[i] = 0;
