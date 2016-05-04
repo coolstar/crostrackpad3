@@ -410,7 +410,7 @@ CyapaWriteReport(
 	size_t bytesWritten = 0;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiWriteReport Entry\n");
+		"CyapaWriteReport Entry\n");
 
 	WDF_REQUEST_PARAMETERS_INIT(&params);
 	WdfRequestGetParameters(Request, &params);
@@ -418,7 +418,7 @@ CyapaWriteReport(
 	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
 	{
 		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-			"VMultiWriteReport Xfer packet too small\n");
+			"CyapaWriteReport Xfer packet too small\n");
 
 		status = STATUS_BUFFER_TOO_SMALL;
 	}
@@ -430,7 +430,7 @@ CyapaWriteReport(
 		if (transferPacket == NULL)
 		{
 			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-				"VMultiWriteReport No xfer packet\n");
+				"CyapaWriteReport No xfer packet\n");
 
 			status = STATUS_INVALID_DEVICE_REQUEST;
 		}
@@ -458,7 +458,7 @@ CyapaWriteReport(
 			default:
 
 				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
-					"VMultiWriteReport Unhandled report type %d\n", transferPacket->reportId);
+					"CyapaWriteReport Unhandled report type %d\n", transferPacket->reportId);
 
 				status = STATUS_INVALID_PARAMETER;
 
@@ -468,7 +468,7 @@ CyapaWriteReport(
 	}
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
-		"VMultiWriteReport Exit = 0x%x\n", status);
+		"CyapaWriteReport Exit = 0x%x\n", status);
 
 	return status;
 
