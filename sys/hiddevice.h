@@ -85,44 +85,35 @@ HID_REPORT_DESCRIPTOR DefaultReportDescriptor[] = {
 	0xc0,                               //   END_COLLECTION
 	0xc0,                               // END_COLLECTION
 
-	/*//TOUCH PAD input TLC
-	0x05, 0x0d,                         // USAGE_PAGE (Digitizers)          
-	0x09, 0x05,                         // USAGE (Touch Pad)             
-	0xa1, 0x01,                         // COLLECTION (Application)         
-	0x85, REPORTID_TOUCHPAD,            //   REPORT_ID (Touch pad)              
-	0x09, 0x22,                         //   USAGE (Finger)                 
-	0xa1, 0x02,                         //   COLLECTION (Logical)  
-	0x15, 0x00,                         //       LOGICAL_MINIMUM (0)
-	0x25, 0x01,                         //       LOGICAL_MAXIMUM (1)
-	0x09, 0x47,                         //       USAGE (Confidence)	
-	0x09, 0x42,                         //       USAGE (Tip switch)
-	0x95, 0x02,                         //       REPORT_COUNT (2)
-	0x75, 0x01,                         //       REPORT_SIZE (1)
-	0x81, 0x02,                         //       INPUT (Data,Var,Abs)
-	0x95, 0x01,                         //       REPORT_COUNT (1)
-	0x75, 0x02,                         //       REPORT_SIZE (2)
-	0x25, 0x02,                         //       LOGICAL_MAXIMUM (2)
-	0x09, 0x51,                         //       USAGE (Contact Identifier)
-	0x81, 0x02,                         //       INPUT (Data,Var,Abs)
-	0x75, 0x01,                         //       REPORT_SIZE (1)
-	0x95, 0x04,                         //       REPORT_COUNT (4)             
-	0x81, 0x03,                         //       INPUT (Cnst,Var,Abs)
-	0x05, 0x01,                         //       USAGE_PAGE (Generic Desk..
-	0x15, 0x00,                         //       LOGICAL_MINIMUM (0)
-	0x26, 0xff, 0x0f,                   //       LOGICAL_MAXIMUM (4095)         
-	0x75, 0x10,                         //       REPORT_SIZE (16)             
-	0x55, 0x0e,                         //       UNIT_EXPONENT (-2)           
-	0x65, 0x13,                         //       UNIT(Inch,EngLinear)                  
-	0x09, 0x30,                         //       USAGE (X)                    
-	0x35, 0x00,                         //       PHYSICAL_MINIMUM (0)         
-	0x46, 0x90, 0x01,                   //       PHYSICAL_MAXIMUM (400)
-	0x95, 0x01,                         //       REPORT_COUNT (1)         
-	0x81, 0x02,                         //       INPUT (Data,Var,Abs)         
-	0x46, 0x13, 0x01,                   //       PHYSICAL_MAXIMUM (275)
-	0x09, 0x31,                         //       USAGE (Y)                    
-	0x81, 0x02,                         //       INPUT (Data,Var,Abs)    
-	0xc0,                               //    END_COLLECTION
-	0xc0,                               // END_COLLECTION*/
+	0x06, 0x00, 0xff,                    // USAGE_PAGE (Vendor Defined Page 1)
+	0x09, 0x01,                          // USAGE (Vendor Usage 1)
+	0xa1, 0x01,                          // COLLECTION (Application)
+	0x85, REPORTID_SCROLL,              //   REPORT_ID (1)
+	0x15, 0x00,                          //   LOGICAL_MINIMUM (0)
+	0x26, 0xff, 0x00,                    //   LOGICAL_MAXIMUM (256)
+	0x75, 0x08,                          //   REPORT_SIZE  (8)   - bits
+	0x95, 0x01,                          //   REPORT_COUNT (1)  - Bytes
+	0x09, 0x02,                          //   USAGE (Vendor Usage 1)
+	0x81, 0x02,                          //   INPUT (Data,Var,Abs)
+	0x15, 0x00,                          //   LOGICAL_MINIMUM (0)
+	0x26, 0xff, 0xff,                    //   LOGICAL_MAXIMUM (65535)
+	0x75, 0x10,                          //   REPORT_SIZE  (16)   - bits
+	0x95, 0x04,                          //   REPORT_COUNT (4)  - Bytes
+	0x09, 0x03,                          //   USAGE (Vendor Usage 2)
+	0x81, 0x02,                          //   INPUT (Data,Var,Abs)
+	0xc0,                                // END_COLLECTION
+
+	0x06, 0x00, 0xff,                    // USAGE_PAGE (Vendor Defined Page 1)
+	0x09, 0x02,                          // USAGE (Vendor Usage 2)
+	0xa1, 0x01,                          // COLLECTION (Application)
+	0x85, REPORTID_SCROLLCTRL,              //   REPORT_ID (1)
+	0x15, 0x00,                          //   LOGICAL_MINIMUM (0)
+	0x26, 0xff, 0x00,                    //   LOGICAL_MAXIMUM (256)
+	0x75, 0x08,                          //   REPORT_SIZE  (8)   - bits
+	0x95, 0x01,                          //   REPORT_COUNT (1)  - Bytes
+	0x09, 0x02,                          //   USAGE (Vendor Usage 1)
+	0x91, 0x02,                          //   OUTPUT (Data,Var,Abs)
+	0xc0,                                // END_COLLECTION
 
 	//
 	// Keyboard report starts here
@@ -220,6 +211,12 @@ IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
 OUT BOOLEAN* CompleteRequest
 );
+
+NTSTATUS
+CyapaWriteReport(
+	IN PDEVICE_CONTEXT DevContext,
+	IN WDFREQUEST Request
+	);
 
 NTSTATUS
 CyapaGetFeature(

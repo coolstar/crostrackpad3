@@ -17,7 +17,9 @@
 #define REPORTID_FEATURE        0x02
 #define REPORTID_RELATIVE_MOUSE 0x04
 #define REPORTID_TOUCHPAD       0x05
+#define REPORTID_SCROLL			0x06
 #define REPORTID_KEYBOARD       0x07
+#define REPORTID_SCROLLCTRL		0x08
 
 //
 // Keyboard specific report infomation
@@ -83,6 +85,39 @@ typedef struct _CYAPA_RELATIVE_MOUSE_REPORT
 	BYTE		HWheelPosition;
 
 } CyapaRelativeMouseReport;
+#pragma pack()
+
+//
+// Scroll specific report information
+//
+#pragma pack(1)
+typedef struct _CYAPA_SCROLL_REPORT
+{
+
+	BYTE        ReportID;
+
+	BYTE		Flag;
+
+	USHORT        Touch1XValue;
+
+	USHORT        Touch1YValue;
+
+	USHORT        Touch2XValue;
+
+	USHORT        Touch2YValue;
+
+} CyapaScrollReport;
+#pragma pack()
+
+#pragma pack(1)
+typedef struct _CYAPA_SCROLL_CONTROL_REPORT
+{
+
+	BYTE        ReportID;
+
+	BYTE		Flag;
+
+} CyapaScrollControlReport;
 #pragma pack()
 
 //

@@ -31,6 +31,8 @@ struct csgesture_softc {
 	int idsForScrolling[2];
 	int ticksSinceScrolling;
 
+	int scrollInertiaActive;
+
 	int blacklistedids[15];
 
 	bool mouseDownDueToTap;

@@ -450,6 +450,10 @@ Return Value:
 		//
 		// Retrieves the device's HID descriptor.
 		//
+		status = BOOTTRACKPAD(pDevice);
+		if (!NT_SUCCESS(status)) {
+			CyapaPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
+		}
 		status = CyapaGetHidDescriptor(device, FxRequest);
 		fSync = TRUE;
 		break;
@@ -493,10 +497,7 @@ Return Value:
 		//
 		//Transmits a class driver-supplied report to the device.
 		//
-		status = BOOTTRACKPAD(pDevice);
-		if (!NT_SUCCESS(status)){
-			CyapaPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
-		}
+		status = CyapaWriteReport(pDevice, FxRequest);
 		fSync = TRUE;
 		break;
 

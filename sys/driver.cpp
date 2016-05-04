@@ -406,11 +406,32 @@ static void update_keyboard(PDEVICE_CONTEXT pDevice, BYTE shiftKeys, BYTE keyCod
 	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 }
 
-bool ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+static void stop_scroll(PDEVICE_CONTEXT pDevice) {
+	_CYAPA_SCROLL_REPORT report;
+	report.ReportID = REPORTID_SCROLL;
+	report.Flag = 1;
+	report.Touch1XValue = 65535;
+	report.Touch1YValue = 65535;
+	report.Touch2XValue = 65535;
+	report.Touch2YValue = 65535;
+
+	size_t bytesWritten;
+	CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
+}
+
+USHORT filterNegative(int val) {
+	if (val > 0)
+		return val;
+	return 65535;
+}
+
+bool ProcessMove(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 	if (abovethreshold == 1 || sc->panningActive) {
 		int i = iToUse[0];
 		if (!sc->panningActive && sc->tick[i] < 5)
 			return false;
+
+		stop_scroll(pDevice);
 
 		if (sc->panningActive && i == -1)
 			i = sc->idForPanning;
@@ -445,7 +466,7 @@ bool ProcessMove(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 	return false;
 }
 
-bool ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
+bool ProcessScroll(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 	sc->scrollx = 0;
 	sc->scrolly = 0;
 	if (abovethreshold == 2 || sc->scrollingActive) {
@@ -466,7 +487,7 @@ bool ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 			}
 		}
 
-		int delta_x1 = sc->x[i1] - sc->lastx[i1];
+		/*int delta_x1 = sc->x[i1] - sc->lastx[i1];
 		int delta_y1 = sc->y[i1] - sc->lasty[i1];
 
 		int delta_x2 = sc->x[i2] - sc->lastx[i2];
@@ -508,7 +529,18 @@ bool ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 		else if (sc->scrollx < -5)
 			sc->scrollx = 1;
 		else
-			sc->scrollx = 0;
+			sc->scrollx = 0;*/
+
+		_CYAPA_SCROLL_REPORT report;
+		report.ReportID = REPORTID_SCROLL;
+		report.Flag = 0;
+		report.Touch1XValue = filterNegative(sc->x[i1]);
+		report.Touch1YValue = filterNegative(sc->y[i1]);
+		report.Touch2XValue = filterNegative(sc->x[i2]);
+		report.Touch2YValue = filterNegative(sc->y[i2]);
+
+		size_t bytesWritten;
+		CyapaProcessVendorReport(pDevice, &report, sizeof(report), &bytesWritten);
 
 		int fngrcount = 0;
 		int totfingers = 0;
@@ -543,6 +575,8 @@ bool ProcessScroll(csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 
 bool ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int abovethreshold, int iToUse[3]) {
 	if (abovethreshold == 3 || abovethreshold == 4) {
+		stop_scroll(pDevice);
+
 		int i1 = iToUse[0];
 		int delta_x1 = sc->x[i1] - sc->lastx[i1];
 		int delta_y1 = sc->y[i1] - sc->lasty[i1];
@@ -616,6 +650,9 @@ bool ProcessThreeFingerSwipe(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int a
 }
 
 void TapToClickOrDrag(PDEVICE_CONTEXT pDevice, csgesture_softc *sc, int button) {
+	if (sc->scrollInertiaActive)
+		return;
+
 	sc->tickssinceclick++;
 	if (sc->mouseDownDueToTap && sc->idForMouseDown == -1) {
 		if (sc->tickssinceclick > 10) {
@@ -717,9 +754,9 @@ void ProcessGesture(PDEVICE_CONTEXT pDevice, csgesture_softc *sc) {
 	if (!handled)
 		handled = ProcessThreeFingerSwipe(pDevice, sc, abovethreshold, iToUse);
 	if (!handled)
-		handled = ProcessScroll(sc, abovethreshold, iToUse);
+		handled = ProcessScroll(pDevice, sc, abovethreshold, iToUse);
 	if (!handled)
-		handled = ProcessMove(sc, abovethreshold, iToUse);
+		handled = ProcessMove(pDevice, sc, abovethreshold, iToUse);
 
 #pragma mark process clickpad press state
 	int buttonmask = 0;

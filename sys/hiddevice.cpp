@@ -398,6 +398,83 @@ OUT BOOLEAN* CompleteRequest
 }
 
 NTSTATUS
+CyapaWriteReport(
+	IN PDEVICE_CONTEXT DevContext,
+	IN WDFREQUEST Request
+	)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+	WDF_REQUEST_PARAMETERS params;
+	PHID_XFER_PACKET transferPacket = NULL;
+	CyapaScrollControlReport* pReport = NULL;
+	size_t bytesWritten = 0;
+
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+		"VMultiWriteReport Entry\n");
+
+	WDF_REQUEST_PARAMETERS_INIT(&params);
+	WdfRequestGetParameters(Request, &params);
+
+	if (params.Parameters.DeviceIoControl.InputBufferLength < sizeof(HID_XFER_PACKET))
+	{
+		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+			"VMultiWriteReport Xfer packet too small\n");
+
+		status = STATUS_BUFFER_TOO_SMALL;
+	}
+	else
+	{
+
+		transferPacket = (PHID_XFER_PACKET)WdfRequestWdmGetIrp(Request)->UserBuffer;
+
+		if (transferPacket == NULL)
+		{
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+				"VMultiWriteReport No xfer packet\n");
+
+			status = STATUS_INVALID_DEVICE_REQUEST;
+		}
+		else
+		{
+			//
+			// switch on the report id
+			//
+
+			switch (transferPacket->reportId)
+			{
+			case REPORTID_SCROLLCTRL:
+
+				pReport = (CyapaScrollControlReport *)transferPacket->reportBuffer;
+
+				if (pReport->Flag == 1) {
+					DevContext->sc.scrollInertiaActive = 1;
+				}
+				else {
+					DevContext->sc.scrollInertiaActive = 0;
+				}
+
+				break;
+
+			default:
+
+				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
+					"VMultiWriteReport Unhandled report type %d\n", transferPacket->reportId);
+
+				status = STATUS_INVALID_PARAMETER;
+
+				break;
+			}
+		}
+	}
+
+	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
+		"VMultiWriteReport Exit = 0x%x\n", status);
+
+	return status;
+
+}
+
+NTSTATUS
 CyapaGetFeature(
 IN PDEVICE_CONTEXT DevContext,
 IN WDFREQUEST Request,
