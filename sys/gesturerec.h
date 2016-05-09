@@ -1,6 +1,62 @@
 #include "stdint.h"
 
+typedef enum {
+	ThreeFingerTapActionCortana,
+	ThreeFingerTapActionWheelClick,
+	ThreeFingerTapActionNone
+} ThreeFingerTapAction;
+
+typedef enum {
+	SwipeUpGestureTaskView,
+	SwipeUpGestureNone
+} SwipeUpGesture;
+
+typedef enum {
+	SwipeDownGestureShowDesktop,
+	SwipeDownGestureNone
+} SwipeDownGesture;
+
+typedef enum {
+	SwipeGestureAltTabSwitcher,
+	SwipeGestureSwitchWorkspace,
+	SwipeGestureNone
+} SwipeGesture;
+
+struct csgesture_settings {
+	int pointerMultiplier; //done
+
+	//click settings
+	bool swapLeftRightFingers; //done
+	bool clickWithNoFingers; //done
+	bool multiFingerClick; //done
+	bool rightClickBottomRight;
+
+	//tap settings
+	bool tapToClickEnabled; //done
+	bool multiFingerTap; //done
+	bool tapDragEnabled; //done
+
+	ThreeFingerTapAction threeFingerTapAction; //done
+
+	bool fourFingerTapEnabled; //done
+
+	//scroll settings
+	int scrollEnabled; //done
+
+	//three finger gestures
+	SwipeUpGesture threeFingerSwipeUpGesture;
+	SwipeDownGesture threeFingerSwipeDownGesture;
+	SwipeGesture threeFingerSwipeLeftRightGesture;
+
+	//four finger gestures
+	SwipeUpGesture fourFingerSwipeUpGesture;
+	SwipeDownGesture fourFingerSwipeDownGesture;
+	SwipeGesture fourFingerSwipeLeftRightGesture;
+};
+
 struct csgesture_softc {
+	struct csgesture_settings settings;
+
 	//hardware input
 	int x[15];
 	int y[15];
@@ -9,6 +65,11 @@ struct csgesture_softc {
 	bool buttondown;
 
 	//hardware info
+	bool infoSetup;
+
+	char product_id[16];
+	char firmware_version[4];
+
 	int resx;
 	int resy;
 	int phyx;
@@ -58,6 +119,10 @@ struct csgesture_softc {
 	int multitaskingy;
 	int multitaskinggesturetick;
 	bool multitaskingdone;
+
+	bool alttabswitchershowing;
+
+	int idsforalttab[3];
 
 	int tick[15];
 	int truetick[15];

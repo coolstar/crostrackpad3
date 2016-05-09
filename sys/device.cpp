@@ -190,6 +190,87 @@ void cyapa_set_power_mode(_In_  PDEVICE_CONTEXT  pDevice, _In_ uint8_t power_mod
 	SpbWriteDataSynchronously(&pDevice->I2CContext, CMD_POWER_MODE, &power, 1);
 }
 
+VOID
+CyapaBootWorkItem(
+	IN WDFWORKITEM  WorkItem
+	)
+{
+	WDFDEVICE Device = (WDFDEVICE)WdfWorkItemGetParentObject(WorkItem);
+	PDEVICE_CONTEXT pDevice = GetDeviceContext(Device);
+
+	cyapa_boot_regs boot;
+
+	csgesture_softc *sc = &pDevice->sc;
+
+	if (!sc->infoSetup) {
+		struct cyapa_cap cap;
+		SpbReadDataSynchronously(&pDevice->I2CContext, CMD_QUERY_CAPABILITIES, &cap, sizeof(cap));
+		if (strncmp((const char *)cap.prod_ida, "CYTRA", 5) != 0) {
+			CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "[cyapainit] Product ID \"%5.5s\" mismatch\n",
+				cap.prod_ida);
+			SpbReadDataSynchronously(&pDevice->I2CContext, CMD_QUERY_CAPABILITIES, &cap, sizeof(cap));
+		}
+
+		sc->resx = ((cap.max_abs_xy_high << 4) & 0x0F00) |
+			cap.max_abs_x_low;
+		sc->resy = ((cap.max_abs_xy_high << 8) & 0x0F00) |
+			cap.max_abs_y_low;
+		sc->phyx = ((cap.phy_siz_xy_high << 4) & 0x0F00) |
+			cap.phy_siz_x_low;
+		sc->phyy = ((cap.phy_siz_xy_high << 8) & 0x0F00) |
+			cap.phy_siz_y_low;
+		CyapaPrint(DEBUG_LEVEL_INFO, DBG_PNP, "[cyapainit] %5.5s-%6.6s-%2.2s buttons=%c%c%c res=%dx%d\n",
+			cap.prod_ida, cap.prod_idb, cap.prod_idc,
+			((cap.buttons & CYAPA_FNGR_LEFT) ? 'L' : '-'),
+			((cap.buttons & CYAPA_FNGR_MIDDLE) ? 'M' : '-'),
+			((cap.buttons & CYAPA_FNGR_RIGHT) ? 'R' : '-'),
+			sc->resx,
+			sc->resy);
+
+		for (int i = 0; i < 5; i++) {
+			sc->product_id[i] = cap.prod_ida[i];
+		}
+		sc->product_id[5] = '-';
+		for (int i = 0; i < 6; i++) {
+			sc->product_id[i + 6] = cap.prod_idb[i];
+		}
+		sc->product_id[12] = '-';
+		for (int i = 0; i < 2; i++) {
+			sc->product_id[i + 13] = cap.prod_idc[i];
+		}
+		sc->product_id[15] = '\0';
+
+		sprintf(sc->firmware_version, "%d.%d", cap.fw_maj_ver, cap.fw_min_ver);
+		sc->infoSetup = true;
+	}
+
+	cyapa_set_power_mode(pDevice, CMD_POWER_MODE_FULL);
+
+	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, &boot, sizeof(boot));
+	WdfObjectDelete(WorkItem);
+}
+
+void CyapaBootTimer(_In_ WDFTIMER hTimer) {
+	WDFDEVICE Device = (WDFDEVICE)WdfTimerGetParentObject(hTimer);
+	PDEVICE_CONTEXT pDevice = GetDeviceContext(Device);
+
+	WDF_OBJECT_ATTRIBUTES attributes;
+	WDF_WORKITEM_CONFIG workitemConfig;
+	WDFWORKITEM hWorkItem;
+
+	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
+	WDF_OBJECT_ATTRIBUTES_SET_CONTEXT_TYPE(&attributes, DEVICE_CONTEXT);
+	attributes.ParentObject = Device;
+	WDF_WORKITEM_CONFIG_INIT(&workitemConfig, CyapaBootWorkItem);
+
+	WdfWorkItemCreate(&workitemConfig,
+		&attributes,
+		&hWorkItem);
+
+	WdfWorkItemEnqueue(hWorkItem);
+	WdfTimerStop(hTimer, FALSE);
+}
+
 NTSTATUS BOOTTRACKPAD(
 	_In_  PDEVICE_CONTEXT  pDevice
 	)
@@ -217,33 +298,17 @@ NTSTATUS BOOTTRACKPAD(
 			SpbWriteDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, bl_exit, sizeof(bl_exit));
 	}
 
-	struct cyapa_cap cap;
-	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_QUERY_CAPABILITIES, &cap, sizeof(cap));
-	if (strncmp((const char *)cap.prod_ida, "CYTRA", 5) != 0) {
-		CyapaPrint(DEBUG_LEVEL_ERROR, DBG_PNP, "[cyapainit] Product ID \"%5.5s\" mismatch\n",
-			cap.prod_ida);
-	}
+	WDF_TIMER_CONFIG              timerConfig;
+	WDFTIMER                      hTimer;
+	WDF_OBJECT_ATTRIBUTES         attributes;
 
-	csgesture_softc *sc = &pDevice->sc;
-	sc->resx = ((cap.max_abs_xy_high << 4) & 0x0F00) |
-		cap.max_abs_x_low;
-	sc->resy = ((cap.max_abs_xy_high << 8) & 0x0F00) |
-		cap.max_abs_y_low;
-	sc->phyx = ((cap.phy_siz_xy_high << 4) & 0x0F00) |
-		cap.phy_siz_x_low;
-	sc->phyy = ((cap.phy_siz_xy_high << 8) & 0x0F00) |
-		cap.phy_siz_y_low;
-	CyapaPrint(DEBUG_LEVEL_INFO, DBG_PNP, "[cyapainit] %5.5s-%6.6s-%2.2s buttons=%c%c%c res=%dx%d\n",
-		cap.prod_ida, cap.prod_idb, cap.prod_idc,
-		((cap.buttons & CYAPA_FNGR_LEFT) ? 'L' : '-'),
-		((cap.buttons & CYAPA_FNGR_MIDDLE) ? 'M' : '-'),
-		((cap.buttons & CYAPA_FNGR_RIGHT) ? 'R' : '-'),
-		sc->resx,
-		sc->resy);
+	WDF_TIMER_CONFIG_INIT(&timerConfig, CyapaBootTimer);
 
-	cyapa_set_power_mode(pDevice, CMD_POWER_MODE_FULL);
+	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
+	attributes.ParentObject = pDevice->FxDevice;
+	status = WdfTimerCreate(&timerConfig, &attributes, &hTimer);
 
-	SpbReadDataSynchronously(&pDevice->I2CContext, CMD_BOOT_STATUS, &boot, sizeof(boot));
+	WdfTimerStart(hTimer, WDF_REL_TIMEOUT_IN_MS(75));
 
 	FuncExit(TRACE_FLAG_WDFLOADING);
 	return status;
@@ -279,6 +344,8 @@ OnD0Entry(
     NTSTATUS status = STATUS_SUCCESS;
 
 	WdfTimerStart(pDevice->Timer, WDF_REL_TIMEOUT_IN_MS(10));
+
+	BOOTTRACKPAD(pDevice);
 
 	pDevice->RegsSet = false;
 	pDevice->ConnectInterrupt = true;
@@ -450,10 +517,6 @@ Return Value:
 		//
 		// Retrieves the device's HID descriptor.
 		//
-		status = BOOTTRACKPAD(pDevice);
-		if (!NT_SUCCESS(status)) {
-			CyapaPrint(DBG_IOCTL, DEBUG_LEVEL_ERROR, "Error booting Cyapa device!\n");
-		}
 		status = CyapaGetHidDescriptor(device, FxRequest);
 		fSync = TRUE;
 		break;

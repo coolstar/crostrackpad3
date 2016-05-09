@@ -20,4 +20,6 @@ EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL   OnIoDeviceControl;
 EVT_WDF_INTERRUPT_ISR                OnInterruptIsr;
 EVT_WDF_TIMER OnPollTimerFunc;
 
+void ProcessSetting(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, int settingRegister, int settingValue);
+
 #endif

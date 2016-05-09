@@ -406,7 +406,8 @@ CyapaWriteReport(
 	NTSTATUS status = STATUS_SUCCESS;
 	WDF_REQUEST_PARAMETERS params;
 	PHID_XFER_PACKET transferPacket = NULL;
-	CyapaScrollControlReport* pReport = NULL;
+	CyapaScrollControlReport *pScrollCtrlReport = NULL;
+	CyapaSettingsReport *pSettingsReport = NULL;
 	size_t bytesWritten = 0;
 
 	CyapaPrint(DEBUG_LEVEL_VERBOSE, DBG_IOCTL,
@@ -444,9 +445,9 @@ CyapaWriteReport(
 			{
 			case REPORTID_SCROLLCTRL:
 
-				pReport = (CyapaScrollControlReport *)transferPacket->reportBuffer;
+				pScrollCtrlReport = (CyapaScrollControlReport *)transferPacket->reportBuffer;
 
-				if (pReport->Flag == 1) {
+				if (pScrollCtrlReport->Flag == 1) {
 					DevContext->sc.scrollInertiaActive = 1;
 				}
 				else {
@@ -455,6 +456,10 @@ CyapaWriteReport(
 
 				break;
 
+			case REPORTID_SETTINGS:
+				pSettingsReport = (CyapaSettingsReport *)transferPacket->reportBuffer;
+				ProcessSetting(DevContext, &DevContext->sc, pSettingsReport->SettingsRegister, pSettingsReport->SettingsValue);
+				break;
 			default:
 
 				CyapaPrint(DEBUG_LEVEL_ERROR, DBG_IOCTL,
