@@ -1205,7 +1205,7 @@ void ProcessInfo(PDEVICE_CONTEXT pDevice, struct csgesture_softc *sc, int infoVa
 		report.Value[i] = 0x00;
 	switch (infoValue) {
 	case 0: //driver version
-		strcpy((char *)report.Value, "3.0 beta 11.9 (5/8/2016)");
+		strcpy((char *)report.Value, "3.0 (8/18/2016)");
 		break;
 	case 1: //product name
 		strcpy((char *)report.Value, sc->product_id);
